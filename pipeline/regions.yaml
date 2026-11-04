@@ -1,0 +1,42 @@
+# Regiones del explorador isométrico. Coordenadas WGS84: bbox = [minLon, minLat, maxLon, maxLat].
+output_dir: ../public/data
+cache_dir: .cache
+max_grid_size: 512        # celdas en el lado mayor de la grilla de cada región
+size_budget_mb: 15        # presupuesto de assets por región
+projection: EPSG:32611    # UTM 11N, cubre Mexicali y Tijuana
+
+regions:
+  - id: mexicali
+    name: Mexicali · Cerro Prieto
+    bbox: [-115.65, 32.20, -115.00, 32.75]
+    date_range: ["2025-10-01", "2026-10-31"]
+    pois:
+      - id: cerro-prieto
+        name: Planta geotérmica Cerro Prieto
+        lon: -115.24
+        lat: 32.40
+        description: Uno de los campos geotérmicos más grandes del mundo. La extracción de fluidos hunde el suelo varios cm al año.
+      - id: mexicali-centro
+        name: Ciudad de Mexicali
+        lon: -115.4523
+        lat: 32.6245
+        description: Capital de Baja California, en la frontera con Calexico.
+    layers:
+      - id: subsidence
+        type: los-displacement
+        product: GUNW
+        coherence_threshold: 0.3
+        # Zona estable de referencia (roca de la Sierra Cucapah). Verificar visualmente con la coherencia.
+        reference_bbox: [-115.42, 32.30, -115.38, 32.34]
+
+  - id: tijuana
+    name: Tijuana
+    bbox: [-117.15, 32.40, -116.80, 32.60]
+    date_range: ["2025-10-01", "2026-10-31"]
+    pois:
+      - id: tijuana-centro
+        name: Tijuana
+        lon: -117.0382
+        lat: 32.5149
+        description: Fenómenos de esta región (expansión urbana, Río Tijuana) llegarán próximamente.
+    layers: []

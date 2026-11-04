@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-04T00:00:00Z",
+  "projection": "EPSG:32611",
+  "regions": [
+    {
+      "id": "mexicali",
+      "name": "Mexicali · Cerro Prieto",
+      "bbox": [-115.65, 32.2, -115.0, 32.75],
+      "bboxProjected": [625000.0, 3563000.0, 687000.0, 3625000.0],
+      "corners": {
+        "nw": [-115.67, 32.75],
+        "ne": [-115.0, 32.76],
+        "sw": [-115.66, 32.2],
+        "se": [-115.0, 32.21]
+      },
+      "width": 4,
+      "height": 4,
+      "cellSizeM": 15500.0,
+      "terrain": {
+        "path": "mexicali/terrain.bin",
+        "encoding": "int16-le",
+        "units": "m",
+        "heightRange": [-10.0, 1050.0],
+        "credits": [
+          {
+            "name": "Copernicus DEM GLO-30",
+            "attribution": "Produced using Copernicus WorldDEM-30",
+            "url": "https://registry.opendata.aws/copernicus-dem/"
+          }
+        ]
+      },
+      "pois": [
+        {
+          "id": "cerro-prieto",
+          "name": "Planta geotérmica Cerro Prieto",
+          "description": "Campo geotérmico.",
+          "lon": -115.24,
+          "lat": 32.4,
+          "col": 2.6,
+          "row": 2.5
+        }
+      ],
+      "layers": [
+        {
+          "id": "subsidence",
+          "type": "los-displacement",
+          "name": "Hundimiento (desplazamiento LOS)",
+          "description": "Desplazamiento acumulado en línea de vista.",
+          "units": "cm",
+          "path": "mexicali/subsidence/cube.bin",
+          "encoding": "int16-le",
+          "scale": 0.1,
+          "nodata": -32768,
+          "dates": ["2025-10-01", "2025-10-25"],
+          "valueRange": [-12.0, 1.0],
+          "colormap": "diverging-vik",
+          "source": "synthetic",
+          "products": [],
+          "credits": [
+            {
+              "name": "Datos sintéticos de desarrollo",
+              "attribution": "No son mediciones NISAR.",
+              "url": "pipeline/README.md#modo-sintético"
+            }
+          ]
+        },
+        {
+          "id": "crops",
+          "type": "backscatter-change",
+          "name": "Tipo futuro",
+          "description": "Capa de un tipo que la web aún no soporta.",
+          "units": "cm",
+          "path": "mexicali/crops/cube.bin",
+          "encoding": "int16-le",
+          "scale": 0.1,
+          "nodata": -32768,
+          "dates": ["2025-10-01"],
+          "valueRange": [0.0, 1.0],
+          "colormap": "diverging-vik",
+          "source": "nisar",
+          "products": ["NISAR_L2_EXAMPLE"],
+          "credits": []
+        }
+      ]
+    },
+    {
+      "id": "tijuana",
+      "name": "Tijuana",
+      "bbox": [-117.15, 32.4, -116.8, 32.6],
+      "bboxProjected": [485000.0, 3584000.0, 518000.0, 3606000.0],
+      "corners": {
+        "nw": [-117.15, 32.6],
+        "ne": [-116.8, 32.6],
+        "sw": [-117.15, 32.4],
+        "se": [-116.8, 32.4]
+      },
+      "width": 3,
+      "height": 2,
+      "cellSizeM": 11000.0,
+      "terrain": {
+        "path": "tijuana/terrain.bin",
+        "encoding": "int16-le",
+        "units": "m",
+        "heightRange": [0.0, 600.0],
+        "credits": []
+      },
+      "pois": [
+        {
+          "id": "tijuana-centro",
+          "name": "Tijuana",
+          "description": "Próximamente.",
+          "lon": -117.0382,
+          "lat": 32.5149,
+          "col": 1.0,
+          "row": 0.9
+        }
+      ],
+      "layers": []
+    }
+  ]
+}
