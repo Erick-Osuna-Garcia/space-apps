@@ -1,0 +1,224 @@
+import { ExternalLink, TriangleAlert, X } from "lucide-react";
+import type { Layer, Region } from "../manifest";
+import { Panel, PanelTitle } from "./Panel";
+
+/** Aviso permanente cuando la capa activa no es una medición NISAR. */
+export function DataNotice({ layer }: { layer: Layer | null }) {
+	if (!layer || layer.source === "nisar") return null;
+	const text =
+		layer.source === "synthetic"
+			? "Datos sintéticos de desarrollo, no son mediciones NISAR"
+			: "Capa derivada de Sentinel-1 (ESA/Copernicus), no de NISAR";
+	return (
+		<output className="pointer-events-auto flex items-center gap-2 rounded-full border border-amber-300/50 bg-amber-950/85 px-3.5 py-1.5 text-xs font-bold text-amber-100 shadow-lg backdrop-blur-md sm:text-sm">
+			<TriangleAlert className="size-4 shrink-0 text-amber-300" aria-hidden />
+			{text}
+		</output>
+	);
+}
+
+/** Etiqueta permanente mientras el hundimiento 3D exagerado está activo (spec). */
+export function DeformBadge({ factor }: { factor: number }) {
+	return (
+		<output className="pointer-events-auto flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-950/85 px-3.5 py-1.5 font-bold text-cyan-100 text-xs shadow-lg backdrop-blur-md sm:text-sm">
+			Hundimiento exagerado ×{factor.toLocaleString("es-MX")} · ilustrativo
+		</output>
+	);
+}
+
+export function SidePanel({
+	title,
+	onClose,
+	children,
+}: {
+	title: string;
+	onClose: () => void;
+	children: React.ReactNode;
+}) {
+	// Panel no modal: no captura el teclado, así la nave se sigue pilotando con él abierto.
+	return (
+		<Panel
+			role="complementary"
+			aria-label={title}
+			className="flex max-h-full w-full flex-col overflow-hidden sm:w-[26rem]"
+		>
+			<div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+				<PanelTitle>{title}</PanelTitle>
+				<button
+					type="button"
+					onClick={onClose}
+					aria-label="Cerrar"
+					className="rounded-lg p-1 text-slate-400 transition hover:bg-white/10 hover:text-white"
+				>
+					<X className="size-4" aria-hidden />
+				</button>
+			</div>
+			<div className="overflow-y-auto px-4 py-3 text-sm leading-relaxed text-slate-300">
+				{children}
+			</div>
+		</Panel>
+	);
+}
+
+export function ContextContent() {
+	return (
+		<div className="space-y-4 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-bold [&_h3]:text-white">
+			<section>
+				<h3>¿Qué es SAR?</h3>
+				<p>
+					Un radar de apertura sintética emite su propia energía en microondas y
+					mide el eco. Por eso ve de día, de noche y a través de las nubes.
+					NISAR (NASA–ISRO) usa banda L (λ ≈ 24 cm), que penetra la vegetación y
+					conserva bien la señal en el desierto.
+				</p>
+			</section>
+			<section>
+				<h3>¿Qué es InSAR?</h3>
+				<p>
+					Al comparar la <em>fase</em> de dos pasadas del satélite sobre el
+					mismo lugar se obtiene un interferograma: cada ciclo de fase equivale
+					a ~12 cm de cambio en la distancia suelo-satélite. Encadenando pares
+					de 12 días se reconstruye cómo se movió el suelo, centímetro a
+					centímetro.
+				</p>
+			</section>
+			<section>
+				<h3>Cómo leer el mapa</h3>
+				<p>
+					El color muestra el desplazamiento acumulado desde la primera fecha,
+					en la línea de vista del radar (LOS). Los tonos café rojizo indican
+					que el suelo se alejó del satélite, casi siempre por hundimiento. El
+					gris marca zonas donde el radar perdió coherencia (agua, cultivos que
+					cambian mucho) y no hay dato confiable. La altura del relieve está
+					exagerada ×3 para que se lea en vista isométrica; la deformación se
+					muestra solo con color.
+				</p>
+			</section>
+			<section>
+				<h3>Hipótesis: ¿por qué se hunde Cerro Prieto?</h3>
+				<p>
+					Cerro Prieto es uno de los campos geotérmicos más grandes del mundo.
+					Desde los años 70 se extraen grandes volúmenes de agua y vapor del
+					subsuelo para generar electricidad. Al bajar la presión en el
+					yacimiento, los sedimentos se compactan y la superficie desciende
+					varios centímetros al año, en un cuenco alargado sobre la zona de
+					extracción. Las fallas activas del sistema Cerro Prieto–Imperial
+					también influyen en la forma del cuenco.
+				</p>
+			</section>
+			<section>
+				<h3>Lo que falta y lo que viene</h3>
+				<p>
+					LOS mezcla movimiento vertical y horizontal; combinar trayectorias
+					ascendentes y descendentes permitiría separarlos. Con NISAR también
+					podremos seguir los ciclos agrícolas del Valle de Mexicali, la
+					expansión urbana de Tijuana y las inundaciones del Río Tijuana: capas
+					que llegarán a este explorador.
+				</p>
+			</section>
+		</div>
+	);
+}
+
+export function CreditsContent({
+	region,
+	layer,
+}: {
+	region: Region;
+	layer: Layer | null;
+}) {
+	const credits = [...region.terrain.credits, ...(layer?.credits ?? [])];
+	return (
+		<div className="space-y-4">
+			<ul className="space-y-3">
+				{credits.map((c) => (
+					<li key={c.name}>
+						<p className="font-semibold text-white">{c.name}</p>
+						<p className="text-xs text-slate-400">{c.attribution}</p>
+						{c.url.startsWith("http") && (
+							<a
+								href={c.url}
+								target="_blank"
+								rel="noreferrer"
+								className="mt-0.5 inline-flex items-center gap-1 text-xs text-cyan-300 hover:text-cyan-200"
+							>
+								{new URL(c.url).hostname}{" "}
+								<ExternalLink className="size-3" aria-hidden />
+							</a>
+						)}
+					</li>
+				))}
+			</ul>
+			{layer && layer.products.length > 0 && (
+				<details>
+					<summary className="cursor-pointer text-xs font-semibold text-slate-200">
+						{layer.products.length} productos NISAR usados en «{layer.name}»
+					</summary>
+					<ul className="mt-2 max-h-56 space-y-1 overflow-y-auto font-mono text-[0.65rem] text-slate-400">
+						{layer.products.map((p) => (
+							<li key={p} className="break-all">
+								{p}
+							</li>
+						))}
+					</ul>
+				</details>
+			)}
+		</div>
+	);
+}
+
+export function WarpOverlay({
+	active,
+	reducedMotion,
+}: {
+	active: boolean;
+	reducedMotion: boolean;
+}) {
+	return (
+		<div
+			aria-hidden
+			className={`warp-overlay ${active ? "warp-active" : ""} ${reducedMotion ? "warp-reduced" : ""}`}
+		/>
+	);
+}
+
+export function ControlsHint({ compact }: { compact: boolean }) {
+	return (
+		<p className="pointer-events-none rounded-xl bg-slate-950/60 px-3 py-1.5 text-xs text-slate-300 backdrop-blur">
+			{compact ? (
+				"Toca el terreno para volar · pellizca para zoom"
+			) : (
+				<>
+					<Kbd>W A S D</Kbd> / <Kbd>flechas</Kbd> pilotar · <Kbd>Shift</Kbd>{" "}
+					turbo · clic para volar · rueda para zoom
+				</>
+			)}
+		</p>
+	);
+}
+
+const Kbd = ({ children }: { children: React.ReactNode }) => (
+	<kbd className="rounded border border-white/20 bg-white/10 px-1 font-sans text-[0.65rem] font-bold text-white">
+		{children}
+	</kbd>
+);
+
+export function NoWebGL() {
+	return (
+		<div className="mx-auto max-w-xl space-y-4 px-4 py-10">
+			<Panel className="p-5">
+				<h1 className="text-xl font-extrabold text-white">
+					Tu navegador no soporta WebGL 2
+				</h1>
+				<p className="mt-2 text-sm text-slate-300">
+					El explorador 3D necesita WebGL 2. Prueba con una versión reciente de
+					Chrome, Firefox, Safari o Edge, o activa la aceleración por hardware.
+					Mientras tanto, aquí tienes el contexto científico del proyecto.
+				</p>
+			</Panel>
+			<Panel className="p-5 text-sm leading-relaxed text-slate-300">
+				<ContextContent />
+			</Panel>
+		</div>
+	);
+}

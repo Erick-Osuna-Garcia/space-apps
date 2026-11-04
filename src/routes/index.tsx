@@ -1,14 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
+import { Explorer, ExplorerLoading } from "#/features/explorer/Explorer";
 
-export const Route = createFileRoute('/')({ component: Home })
-
-function Home() {
-  return (
-    <div className="p-8">
-      <h1 className="text-4xl font-bold">Welcome to TanStack Start</h1>
-      <p className="mt-4 text-lg">
-        Edit <code>src/routes/index.tsx</code> to get started.
-      </p>
-    </div>
-  )
-}
+// WebGL no corre en el servidor: la escena se monta solo en el cliente (design.md D10).
+export const Route = createFileRoute("/")({
+	ssr: false,
+	component: Explorer,
+	pendingComponent: () => <ExplorerLoading />,
+});

@@ -345,3 +345,47 @@ a {
     color: var(--foreground);
   }
 }
+
+/* ---------- Explorador NISAR ---------- */
+html.dark body {
+  background: #05070f;
+  color: #e2e8f0;
+}
+
+.warp-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 30;
+  background:
+    repeating-conic-gradient(from 0deg at 50% 50%, rgb(103 232 249 / 0.55) 0deg 0.6deg, transparent 0.6deg 7deg),
+    radial-gradient(circle at 50% 50%, rgb(255 255 255 / 0.95) 0%, rgb(14 116 144 / 0.6) 18%, #05070f 70%);
+  mask-image: radial-gradient(circle at 50% 50%, transparent 0%, black 22%);
+  transform: scale(1.6);
+  transition:
+    opacity 0.4s ease,
+    transform 0.45s cubic-bezier(0.6, 0, 0.3, 1);
+}
+.warp-overlay.warp-active {
+  opacity: 1;
+  transform: scale(1);
+  animation: warp-spin 1.2s linear infinite;
+}
+.warp-overlay.warp-reduced {
+  background: #05070f;
+  mask-image: none;
+  transform: none;
+  animation: none;
+  transition: opacity 0.15s linear;
+}
+@keyframes warp-spin {
+  to {
+    rotate: 7deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .warp-overlay.warp-active {
+    animation: none;
+  }
+}
