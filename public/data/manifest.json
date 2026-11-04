@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-04T19:11:28Z",
+  "projection": "EPSG:32611",
+  "regions": [
+    {
+      "id": "mexicali",
+      "name": "Mexicali · Cerro Prieto",
+      "bbox": [
+        -115.65,
+        32.2,
+        -115.0,
+        32.75
+      ],
+      "bboxProjected": [
+        626470.72,
+        3563417.81,
+        688516.14,
+        3625342.05
+      ],
+      "corners": {
+        "nw": [
+          -115.649869,
+          32.758689
+        ],
+        "ne": [
+          -114.987801,
+          32.749805
+        ],
+        "sw": [
+          -115.658182,
+          32.200217
+        ],
+        "se": [
+          -115.000186,
+          32.191521
+        ]
+      },
+      "width": 512,
+      "height": 511,
+      "cellSizeM": 121.182,
+      "terrain": {
+        "path": "mexicali/terrain.bin",
+        "encoding": "int16-le",
+        "units": "m",
+        "heightRange": [
+          -20.0,
+          1072.0
+        ],
+        "credits": [
+          {
+            "name": "Copernicus DEM GLO-30",
+            "attribution": "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+            "url": "https://registry.opendata.aws/copernicus-dem/"
+          }
+        ]
+      },
+      "pois": [
+        {
+          "id": "cerro-prieto",
+          "name": "Planta geotérmica Cerro Prieto",
+          "description": "Uno de los campos geotérmicos más grandes del mundo. La extracción de fluidos hunde el suelo varios cm al año.",
+          "lon": -115.24,
+          "lat": 32.4,
+          "col": 322.292,
+          "row": 323.524
+        },
+        {
+          "id": "mexicali-centro",
+          "name": "Ciudad de Mexicali",
+          "description": "Capital de Baja California, en la frontera con Calexico.",
+          "lon": -115.4523,
+          "lat": 32.6245,
+          "col": 154.525,
+          "row": 120.681
+        }
+      ],
+      "layers": [
+        {
+          "id": "subsidence",
+          "type": "los-displacement",
+          "name": "Hundimiento (desplazamiento LOS)",
+          "description": "Desplazamiento acumulado del suelo en la línea de vista del radar desde la primera fecha. Valores negativos = el suelo se aleja del satélite (hundimiento).",
+          "units": "cm",
+          "path": "mexicali/subsidence/cube.bin",
+          "encoding": "int16-le",
+          "scale": 0.1,
+          "nodata": -32768,
+          "dates": [
+            "2025-10-01",
+            "2025-10-25",
+            "2025-11-18",
+            "2025-12-12",
+            "2026-01-05",
+            "2026-01-29",
+            "2026-02-22",
+            "2026-03-18",
+            "2026-04-11",
+            "2026-05-05",
+            "2026-05-29",
+            "2026-06-22",
+            "2026-07-16",
+            "2026-08-09",
+            "2026-09-02",
+            "2026-09-26",
+            "2026-10-20"
+          ],
+          "valueRange": [
+            -13.03,
+            1.24
+          ],
+          "colormap": "diverging-vik",
+          "source": "synthetic",
+          "products": [],
+          "credits": [
+            {
+              "name": "Datos sintéticos de desarrollo",
+              "attribution": "Generados por nisar-pipeline --synthetic. No son mediciones NISAR.",
+              "url": "pipeline/README.md#modo-sintético"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tijuana",
+      "name": "Tijuana",
+      "bbox": [
+        -117.15,
+        32.4,
+        -116.8,
+        32.6
+      ],
+      "bboxProjected": [
+        485893.55,
+        3584782.88,
+        518808.61,
+        3606961.97
+      ],
+      "corners": {
+        "nw": [
+          -117.150332,
+          32.600069
+        ],
+        "ne": [
+          -116.799557,
+          32.599999
+        ],
+        "sw": [
+          -117.15,
+          32.39999
+        ],
+        "se": [
+          -116.8,
+          32.399921
+        ]
+      },
+      "width": 512,
+      "height": 345,
+      "cellSizeM": 64.287,
+      "terrain": {
+        "path": "tijuana/terrain.bin",
+        "encoding": "int16-le",
+        "units": "m",
+        "heightRange": [
+          0.0,
+          1076.0
+        ],
+        "credits": [
+          {
+            "name": "Copernicus DEM GLO-30",
+            "attribution": "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+            "url": "https://registry.opendata.aws/copernicus-dem/"
+          }
+        ]
+      },
+      "pois": [
+        {
+          "id": "tijuana-centro",
+          "name": "Tijuana",
+          "description": "Fenómenos de esta región (expansión urbana, Río Tijuana) llegarán próximamente.",
+          "lon": -117.0382,
+          "lat": 32.5149,
+          "col": 163.618,
+          "row": 147.005
+        }
+      ],
+      "layers": []
+    }
+  ]
+}
