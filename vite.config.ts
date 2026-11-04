@@ -11,7 +11,9 @@ import { nitro } from 'nitro/vite'
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
-    devtools(),
+    // Los elementos de React Three Fiber (<mesh>, <group>…) no son DOM: R3F interpreta el
+    // atributo data-tsd-source como ruta de propiedades y truena.
+    devtools({ injectSource: { enabled: true, ignore: { files: [/features\/explorer\/scene\//] } } }),
     nitro({ rollupConfig: { external: [/^@sentry\//] } }),
     tailwindcss(),
     tanstackStart(),

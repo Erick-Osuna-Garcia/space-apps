@@ -11,3 +11,9 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+
+# pipeline
+pipeline/.cache/
+pipeline/.venv/
+__pycache__/
+.pytest_cache/
