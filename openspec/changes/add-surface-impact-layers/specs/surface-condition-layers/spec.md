@@ -25,7 +25,7 @@ La UI SHALL ofrecer una capa que marque dónde la retrodispersión subió o baj�
 - **THEN** esa área se marca como aumento de señal, y la ayuda aclara que el cambio indica algo distinto en la superficie, no su causa
 
 ### Requirement: Agua en superficie
-La UI SHALL mostrar por fecha las áreas clasificadas como agua a partir de la señal baja de GCOV, excluyendo sombras de radar en laderas y distinguiendo agua permanente de agua nueva.
+La UI SHALL mostrar por fecha el agua permanente, tomada del mapa de cobertura, y el agua nueva, detectada por una caída fuerte de la señal GCOV respecto a lo normal de cada punto, excluyendo sombras de radar en laderas.
 
 #### Scenario: Agua nueva
 - **WHEN** una fecha muestra agua donde normalmente no hay
@@ -33,6 +33,10 @@ La UI SHALL mostrar por fecha las áreas clasificadas como agua a partir de la s
 
 #### Scenario: Ladera en sombra
 - **WHEN** una ladera empinada tiene señal baja
+- **THEN** no se clasifica como agua
+
+#### Scenario: Arena seca
+- **WHEN** un terreno tiene señal baja pero constante en todas las fechas
 - **THEN** no se clasifica como agua
 
 ### Requirement: Humedad del suelo

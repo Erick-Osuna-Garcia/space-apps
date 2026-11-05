@@ -106,7 +106,7 @@ Al entrar a una región con capa, el mapa SHALL empezar con el hundimiento 3D ac
 
 #### Scenario: Entrada a la app
 - **WHEN** el usuario abre el explorador y termina de cargar la capa
-- **THEN** el terreno se deforma fecha a fecha sin ninguna acción y la etiqueta de exageración es visible
+- **THEN** el terreno se deforma fecha a fecha sin ninguna acción
 
 #### Scenario: Movimiento reducido
 - **WHEN** el navegador tiene `prefers-reduced-motion`

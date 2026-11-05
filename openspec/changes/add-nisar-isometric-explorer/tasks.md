@@ -18,10 +18,10 @@
 
 - [x] 3.1 Implementar `discover.py` con `asf_search` (NISAR, GUNW, bbox, fechas) que escribe `pipeline/.cache/<region>/discovery.json` y falla con un error explícito si no hay productos; verificar con un test que mockea `asf_search` (con y sin resultados) y con una corrida real sobre Mexicali
 - [x] 3.2 Revisar el reporte de descubrimiento real: si hay menos de 2 fechas útiles, activar el plan B (D6) y registrar la decisión en `pipeline/README.md`; verificar que la decisión y los ids de los productos quedan documentados
-- [ ] 3.3 Implementar `download.py` con credenciales desde el entorno o `.netrc` (abortar si faltan, sin loguearlas) y caché que omite productos completos; verificar con tests de credenciales ausentes y de caché, y revisando los logs de una corrida real en busca de secretos
-- [ ] 3.4 Implementar `gunw.py` para leer fase desenvuelta, coherencia, grilla y EPSG del HDF5 (rutas en una tabla de constantes según la especificación de producto) y remuestrear a la grilla de la región; verificar con un HDF5 sintético mínimo en los tests y con un producto real descargado
+- [x] 3.3 Implementar `download.py` con credenciales desde el entorno o `.netrc` (abortar si faltan, sin loguearlas) y caché que omite productos completos; verificar con tests de credenciales ausentes y de caché, y revisando los logs de una corrida real en busca de secretos
+- [x] 3.4 Implementar `gunw.py` para leer fase desenvuelta, coherencia, grilla y EPSG del HDF5 (rutas en una tabla de constantes según la especificación de producto) y remuestrear a la grilla de la región; verificar con un HDF5 sintético mínimo en los tests y con un producto real descargado
 - [x] 3.5 Implementar `timeseries.py` (fase→cm LOS con λ=c/centerFrequency ≈ 0.2384 m, resta de la referencia estable, inversión SBAS por mínimos cuadrados, máscara de coherencia); verificar con tests sintéticos que recuperan una serie conocida, d(t0)=0 y la propagación de nodata
-- [ ] 3.6 Integrar todo en `cli.py` (sin `--synthetic`) y generar los assets reales de Mexicali; verificar que Cerro Prieto aparece como alejamiento del satélite (hundimiento) del orden de cm/año, fijar la convención de signo en un test y versionar `public/data/`
+- [x] 3.6 Integrar todo en `cli.py` (sin `--synthetic`) y generar los assets reales de Mexicali; verificar que Cerro Prieto aparece como alejamiento del satélite (hundimiento) del orden de cm/año, fijar la convención de signo en un test y versionar `public/data/`
 
 ## 4. Base del frontend
 

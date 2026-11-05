@@ -18,11 +18,22 @@ La UI SHALL agrupar las capas de la región en los temas Movimiento, Superficie,
 - **THEN** no aparece en el catálogo
 
 ### Requirement: Superposición de infraestructura
-Sobre la capa principal, el usuario SHALL poder encender o apagar las superposiciones vectoriales de caminos y canales.
+Los caminos y canales SHALL dibujarse por defecto sobre cualquier capa principal, sin cambiarla. El usuario SHALL poder apagarlos desde Ajustes.
 
-#### Scenario: Encender caminos
-- **WHEN** el usuario activa "Caminos" con una capa principal activa
-- **THEN** los caminos se dibujan encima sin cambiar la capa principal
+#### Scenario: Entrada a la región
+- **WHEN** el usuario entra a una región con infraestructura
+- **THEN** los caminos y canales ya están visibles
+
+#### Scenario: Apagar caminos
+- **WHEN** el usuario apaga "Caminos" en Ajustes
+- **THEN** los caminos dejan de dibujarse y la capa principal no cambia
+
+### Requirement: Ajustes
+Un botón de la HUD SHALL abrir un modal de Ajustes con los interruptores del mapa: mostrar capa, opacidad, caminos, canales y hundimiento 3D con su factor. El panel de capas SHALL quedar solo para elegir la capa y ver su leyenda.
+
+#### Scenario: Abrir ajustes
+- **WHEN** el usuario pulsa Ajustes
+- **THEN** se abre el modal y se puede cerrar con Escape o con el botón de cerrar
 
 ### Requirement: Inspector del mapa
 Al tocar un punto, el usuario SHALL ver qué dice cada capa disponible de ese lugar, en lenguaje claro. El toque SHALL seguir volando la nave a ese punto.

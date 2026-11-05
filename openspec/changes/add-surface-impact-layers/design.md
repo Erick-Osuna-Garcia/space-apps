@@ -35,7 +35,7 @@ Un recorte GCOV de 60 km a 20 m son ~72 MB por producto, mucho más que GUNW. Se
 ### D4. Retrodispersión, cambios y agua
 - `gcov.py` lee `HHHH` y `HVHV` de `/science/LSAR/GCOV/grids/frequencyA` (rutas por confirmar con un producto real) y exporta dB × 100 en Int16.
 - **Cambios:** diferencia en dB contra la primera fecha sobre el campo suavizado, con umbral de ±3 dB.
-- **Agua:** HH bajo un umbral, excluyendo pendiente > 10°. "Permanente" = presente en más del 80 % de las fechas. Salida categórica por fecha en Uint8.
+- **Agua:** un umbral fijo falló con datos reales: el mar mide −18 dB y la arena seca del desierto ~−20 dB. La permanente viene del mapa de cobertura, y la nueva es una caída de 5 dB o más respecto a la mediana del píxel, por debajo de −14 dB y con pendiente < 10°. Salida categórica por fecha en Uint8.
 
 ### D5. Disturbios por coherencia
 Los recortes GUNW ya incluyen coherencia, así que no se descarga nada nuevo. Por píxel: mediana de la serie; se marca disturbio donde cae más de 0.3 por debajo de esa mediana.
