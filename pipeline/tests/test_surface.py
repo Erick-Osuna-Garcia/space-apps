@@ -83,19 +83,22 @@ def test_change_classes_marks_block_and_ignores_speckle():
     assert c[1, 0, 0] == 0
 
 
-def test_water_classes_permanent_new_and_shadow():
+def test_water_classes_separates_water_from_dry_sand():
     t = 5
-    hh = np.full((t, 1, 4), -10.0, np.float32)
-    hh[:, 0, 0] = -25          # agua permanente
-    hh[4, 0, 1] = -25          # agua nueva en una fecha
-    hh[:, 0, 2] = -25          # sombra en ladera empinada
-    hh[:, 0, 3] = np.nan
-    slope = np.array([[1, 1, 30, 1]], np.float32)
-    w = water_classes(hh, slope)
+    hh = np.full((t, 1, 5), -8.0, np.float32)
+    hh[:, 0, 0] = -18          # mar: del mapa de cobertura
+    hh[4, 0, 1] = -16          # inundación: cae 8 dB en una fecha
+    hh[:, 0, 2] = -22          # arena seca: muy baja pero constante
+    hh[4, 0, 3] = -16          # caída en ladera empinada: sombra
+    hh[:, 0, 4] = np.nan
+    slope = np.array([[1, 1, 1, 30, 1]], np.float32)
+    permanent = np.array([[True, False, False, False, False]])
+    w = water_classes(hh, slope, permanent)
     assert (w[:, 0, 0] == 2).all()
     assert w[4, 0, 1] == 3 and w[0, 0, 1] == 1
     assert (w[:, 0, 2] == 1).all()
-    assert (w[:, 0, 3] == 0).all()
+    assert (w[:, 0, 3] == 1).all()
+    assert (w[:, 0, 4] == 0).all()
 
 
 def test_disturbance_classes():

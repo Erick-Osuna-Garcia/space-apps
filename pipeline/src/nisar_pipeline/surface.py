@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
+import warnings
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -30,9 +31,9 @@ SME2_FILL = -9999.0
 DECIMATE = 8  # GCOV viene a 10 m; se promedia en potencia a 80 m antes de guardar
 
 CHANGE_DB = 3.0
-WATER_DB = -20.0
+WATER_DB = -14.0
+WATER_DROP_DB = 5.0
 WATER_MAX_SLOPE_DEG = 10.0
-PERMANENT_FRACTION = 0.8
 COHERENCE_DROP = 0.3
 
 _DATE = re.compile(r"_(\d{8})T\d{6}")
@@ -228,28 +229,35 @@ def change_classes(db_cube: np.ndarray) -> np.ndarray:
     return out
 
 
-def water_classes(hh_db: np.ndarray, slope: np.ndarray) -> np.ndarray:
-    """2 = agua permanente, 3 = agua nueva, 1 = sin agua, 0 = sin dato."""
+def water_classes(hh_db: np.ndarray, slope: np.ndarray, permanent: np.ndarray) -> np.ndarray:
+    """2 = agua permanente, 3 = agua nueva, 1 = sin agua, 0 = sin dato.
+
+    Un umbral fijo no sirve: el mar (~-18 dB) y la arena seca dan la misma señal. El agua
+    permanente viene del mapa de cobertura, y el agua nueva es una caída respecto a lo normal
+    de ese píxel: la arena seca es baja pero constante, así que no se marca.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        typical = np.nanmedian(hh_db, axis=0)
     with np.errstate(invalid="ignore"):
-        wet = (hh_db < WATER_DB) & (slope[None] < WATER_MAX_SLOPE_DEG)
-    observed = np.isfinite(hh_db)
-    share = wet.sum(axis=0) / np.maximum(observed.sum(axis=0), 1)
-    permanent = share >= PERMANENT_FRACTION
+        new = (
+            (hh_db < WATER_DB)
+            & (typical[None] - hh_db >= WATER_DROP_DB)
+            & (slope[None] < WATER_MAX_SLOPE_DEG)
+        )
     out = np.ones(hh_db.shape, dtype=np.uint8)
-    out[wet] = 3
-    out[:, permanent] = np.where(wet[:, permanent], 2, 1)
-    out[~observed] = 0
+    out[new] = 3
+    out[:, permanent] = 2
+    out[~np.isfinite(hh_db)] = 0
     return out
 
 
 def disturbance_classes(coherence: np.ndarray) -> np.ndarray:
     """Por par: 2 = la coherencia cae claramente bajo la típica del píxel, 1 = normal, 0 = sin dato."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        typical = np.nanmedian(coherence, axis=0)
     with np.errstate(invalid="ignore"):
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            typical = np.nanmedian(coherence, axis=0)
         drop = typical[None] - coherence
         out = np.ones(coherence.shape, dtype=np.uint8)
         out[drop >= COHERENCE_DROP] = 2

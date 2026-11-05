@@ -258,7 +258,10 @@ def decomposition_layers(
     return out
 
 
-def surface_layers(cfg: PipelineConfig, region: RegionConfig, grid: Grid, slope: np.ndarray) -> list[ExtraLayer]:
+def surface_layers(
+    cfg: PipelineConfig, region: RegionConfig, grid: Grid, slope: np.ndarray,
+    land: np.ndarray,
+) -> list[ExtraLayer]:
     """HH, HV, cambios y agua desde GCOV mensual."""
     scenes = S.monthly_scenes(region, "GCOV", region.surface_stack)
     if len(scenes) < 2:
@@ -282,9 +285,9 @@ def surface_layers(cfg: PipelineConfig, region: RegionConfig, grid: Grid, slope:
                  "surface", S.change_classes(hh),
                  [(2, "Señal más fuerte", "#e53935"), (3, "Señal más débil", "#43a047")], dates, ids),
         _classes(rid, "water", "Agua en superficie",
-                 "Áreas de señal muy baja, sin contar laderas en sombra. Agua nueva = donde "
-                 "normalmente no hay agua.",
-                 "water", S.water_classes(hh, slope),
+                 "Agua permanente según el mapa de cobertura. Agua nueva = la señal del radar cae "
+                 "con fuerza respecto a lo normal de ese punto, sin contar laderas en sombra.",
+                 "water", S.water_classes(hh, slope, land == LANDCOVER[80][0]),
                  [(2, "Agua permanente", "#1565c0"), (3, "Agua nueva", "#00e5ff")], dates, ids),
     ]
 
@@ -342,6 +345,7 @@ def build_extras(
             source="derived", products=[], credits=[mf.COPERNICUS_CREDIT, mf.NISAR_CREDIT],
         ), active_slopes(slope, velocity)[None]))
 
+    land = landcover(grid) if {"landcover", "surface"} & wanted else None
     if "landcover" in wanted:
         layers.append(ExtraLayer(mf.Layer(
             id="landcover", type="raster", theme="impact", name="Uso de suelo",
@@ -350,7 +354,7 @@ def build_extras(
             dates=[], referenceDate="2021-01-01", valueRange=(2.0, 9.0), paint="categorical",
             classes=[mf.LayerClass(value=v, name=n, color=c) for v, n, c in LANDCOVER.values()],
             source="esa-worldcover", products=[], credits=[WORLDCOVER_CREDIT],
-        ), landcover(grid)[None]))
+        ), land[None]))
 
     if "population" in wanted:
         pop = population(grid, cfg.cache_dir)
@@ -379,7 +383,7 @@ def build_extras(
             cfg, region, grid, velocity, aux.get("products", [])
         )
     if region.surface_stack:
-        jobs["surface"] = lambda: surface_layers(cfg, region, grid, slope)
+        jobs["surface"] = lambda: surface_layers(cfg, region, grid, slope, land)
         jobs["moisture"] = lambda: [moisture_layer(cfg, region, grid)]
     if jobs:
         for key, job in jobs.items():
