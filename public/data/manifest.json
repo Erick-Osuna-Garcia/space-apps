@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "generatedAt": "2026-11-04T20:27:15Z",
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-05T03:55:06Z",
   "projection": "EPSG:32611",
   "regions": [
     {
@@ -79,6 +79,7 @@
         {
           "id": "subsidence",
           "type": "los-displacement",
+          "theme": "movement",
           "name": "Hundimiento (desplazamiento LOS)",
           "description": "Desplazamiento acumulado del suelo en la línea de vista del radar desde la primera fecha. Valores negativos = el suelo se aleja del satélite (hundimiento).",
           "units": "cm",
@@ -87,36 +88,367 @@
           "scale": 0.1,
           "nodata": -32768,
           "dates": [
-            "2025-10-01",
-            "2025-10-25",
-            "2025-11-18",
-            "2025-12-12",
-            "2026-01-05",
-            "2026-01-29",
-            "2026-02-22",
-            "2026-03-18",
-            "2026-04-11",
-            "2026-05-05",
-            "2026-05-29",
-            "2026-06-22",
-            "2026-07-16",
-            "2026-08-09",
-            "2026-09-02",
-            "2026-09-26",
-            "2026-10-20"
+            "2025-10-23",
+            "2025-11-04",
+            "2025-11-16",
+            "2025-11-28",
+            "2025-12-10",
+            "2025-12-22",
+            "2026-01-03",
+            "2026-01-15",
+            "2026-01-27",
+            "2026-02-08",
+            "2026-02-20",
+            "2026-03-16",
+            "2026-04-09",
+            "2026-04-21",
+            "2026-05-03",
+            "2026-05-15",
+            "2026-05-27",
+            "2026-06-08",
+            "2026-06-20",
+            "2026-07-02",
+            "2026-07-14",
+            "2026-07-26",
+            "2026-08-19",
+            "2026-08-31",
+            "2026-09-12",
+            "2026-09-24",
+            "2026-10-06",
+            "2026-10-18"
           ],
+          "referenceDate": null,
           "valueRange": [
-            -14.8,
-            1.24
+            -8.6,
+            6.95
           ],
-          "colormap": "diverging-vik",
-          "source": "synthetic",
+          "paint": "diverging",
+          "palette": "vik",
+          "classes": [],
+          "source": "nisar",
+          "products": [
+            "NISAR_L2_PR_GUNW_003_085_D_072_004_4000_SH_20251023T023258_20251023T023323_20251104T023258_20251104T023324_X05010_N_P_J_001",
+            "NISAR_L2_PR_GUNW_004_085_D_072_005_4000_SH_20251104T023258_20251104T023324_20251116T023259_20251116T023324_X05010_N_P_J_001",
+            "NISAR_L2_PR_GUNW_005_085_D_072_006_4000_SH_20251116T023259_20251116T023324_20251128T023250_20251128T023324_P05023_N_P_J_001",
+            "NISAR_L2_PR_GUNW_006_085_D_072_007_4000_SH_20251128T023250_20251128T023324_20251210T023250_20251210T023325_X05010_N_F_J_001",
+            "NISAR_L2_PR_GUNW_007_085_D_072_008_4000_SH_20251210T023250_20251210T023325_20251222T023251_20251222T023325_X05010_N_F_J_001",
+            "NISAR_L2_PR_GUNW_008_085_D_072_009_4000_SH_20251222T023251_20251222T023325_20260103T023251_20260103T023326_X05010_N_F_J_001",
+            "NISAR_L2_PR_GUNW_009_085_D_072_010_4000_SH_20260103T023251_20260103T023326_20260115T023252_20260115T023327_X05010_N_F_J_001",
+            "NISAR_L2_PR_GUNW_010_085_D_072_011_4000_SH_20260115T023252_20260115T023327_20260127T023252_20260127T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_011_085_D_072_012_4000_SH_20260127T023252_20260127T023327_20260208T023253_20260208T023328_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_012_085_D_072_013_4000_SH_20260208T023253_20260208T023328_20260220T023253_20260220T023328_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_013_085_D_072_015_4000_SH_20260220T023253_20260220T023328_20260316T023254_20260316T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_015_085_D_072_017_4000_SH_20260316T023254_20260316T023329_20260409T023255_20260409T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_017_085_D_072_018_4000_SH_20260409T023255_20260409T023329_20260421T023254_20260421T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_018_085_D_072_019_4000_SH_20260421T023254_20260421T023329_20260503T023254_20260503T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_019_085_D_072_020_4000_SH_20260503T023254_20260503T023329_20260515T023253_20260515T023328_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_020_085_D_072_021_4000_SH_20260515T023253_20260515T023328_20260527T023253_20260527T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_021_085_D_072_022_4000_SH_20260527T023253_20260527T023327_20260608T023252_20260608T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_022_085_D_072_023_4000_SH_20260608T023252_20260608T023327_20260620T023251_20260620T023326_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_024_085_D_072_025_4000_SH_20260702T023250_20260702T023325_20260714T023250_20260714T023325_P05023_F_F_J_001",
+            "NISAR_L2_PR_GUNW_025_085_D_072_026_4000_SH_20260714T023250_20260714T023325_20260726T023249_20260726T023324_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_026_085_D_072_028_4000_SH_20260726T023249_20260726T023324_20260819T023248_20260819T023323_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_028_085_D_072_029_4000_SH_20260819T023248_20260819T023323_20260831T023248_20260831T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_029_085_D_072_030_4000_SH_20260831T023248_20260831T023322_20260912T023248_20260912T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_030_085_D_072_031_4000_SH_20260912T023248_20260912T023322_20260924T023248_20260924T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_031_085_D_072_032_4000_SH_20260924T023248_20260924T023322_20261006T023248_20261006T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_032_085_D_072_033_4000_SH_20261006T023248_20261006T023322_20261018T023248_20261018T023322_P05023_N_F_J_001"
+          ],
+          "credits": [
+            {
+              "name": "NASA-ISRO SAR (NISAR) L2 GUNW",
+              "attribution": "NISAR data courtesy of NASA/JPL-Caltech and ISRO, distributed by the ASF DAAC",
+              "url": "https://search.asf.alaska.edu/"
+            }
+          ]
+        },
+        {
+          "id": "slope",
+          "type": "raster",
+          "theme": "impact",
+          "name": "Pendiente",
+          "description": "Inclinación del terreno, calculada del relieve.",
+          "units": "°",
+          "path": "mexicali/slope/cube.bin",
+          "encoding": "int16-le",
+          "scale": 0.1,
+          "nodata": -32768,
+          "dates": [],
+          "referenceDate": "2014-01-01",
+          "valueRange": [
+            0.0,
+            30.3
+          ],
+          "paint": "sequential",
+          "palette": "heat",
+          "classes": [],
+          "source": "derived",
           "products": [],
           "credits": [
             {
-              "name": "Datos sintéticos de desarrollo",
-              "attribution": "Generados por nisar-pipeline --synthetic. No son mediciones NISAR.",
-              "url": "pipeline/README.md#modo-sintético"
+              "name": "Copernicus DEM GLO-30",
+              "attribution": "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+              "url": "https://registry.opendata.aws/copernicus-dem/"
+            }
+          ]
+        },
+        {
+          "id": "active-slopes",
+          "type": "raster",
+          "theme": "impact",
+          "name": "Laderas activas",
+          "description": "Terreno de más de 15° donde además el radar detecta más de 1 cm/año de movimiento. Señala dónde mirar; no confirma un deslizamiento.",
+          "units": "clase",
+          "path": "mexicali/active-slopes/cube.bin",
+          "encoding": "uint8",
+          "scale": 1.0,
+          "nodata": 0,
+          "dates": [],
+          "referenceDate": "2026-10-01",
+          "valueRange": [
+            1.0,
+            2.0
+          ],
+          "paint": "categorical",
+          "palette": "vik",
+          "classes": [
+            {
+              "value": 2,
+              "name": "Ladera activa",
+              "color": "#e53935"
+            }
+          ],
+          "source": "derived",
+          "products": [],
+          "credits": [
+            {
+              "name": "Copernicus DEM GLO-30",
+              "attribution": "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+              "url": "https://registry.opendata.aws/copernicus-dem/"
+            },
+            {
+              "name": "NASA-ISRO SAR (NISAR) L2 GUNW",
+              "attribution": "NISAR data courtesy of NASA/JPL-Caltech and ISRO, distributed by the ASF DAAC",
+              "url": "https://search.asf.alaska.edu/"
+            }
+          ]
+        },
+        {
+          "id": "landcover",
+          "type": "raster",
+          "theme": "impact",
+          "name": "Uso de suelo",
+          "description": "Cobertura del terreno en 2021. No viene de NISAR.",
+          "units": "clase",
+          "path": "mexicali/landcover/cube.bin",
+          "encoding": "uint8",
+          "scale": 1.0,
+          "nodata": 0,
+          "dates": [],
+          "referenceDate": "2021-01-01",
+          "valueRange": [
+            2.0,
+            9.0
+          ],
+          "paint": "categorical",
+          "palette": "vik",
+          "classes": [
+            {
+              "value": 2,
+              "name": "Árboles",
+              "color": "#2e7d32"
+            },
+            {
+              "value": 3,
+              "name": "Matorral",
+              "color": "#a1887f"
+            },
+            {
+              "value": 4,
+              "name": "Pastizal",
+              "color": "#cddc39"
+            },
+            {
+              "value": 5,
+              "name": "Cultivos",
+              "color": "#f2c14e"
+            },
+            {
+              "value": 6,
+              "name": "Zona urbana",
+              "color": "#d32f2f"
+            },
+            {
+              "value": 7,
+              "name": "Suelo desnudo",
+              "color": "#d7ccc8"
+            },
+            {
+              "value": 8,
+              "name": "Agua",
+              "color": "#1976d2"
+            },
+            {
+              "value": 9,
+              "name": "Humedal",
+              "color": "#26a69a"
+            }
+          ],
+          "source": "esa-worldcover",
+          "products": [],
+          "credits": [
+            {
+              "name": "ESA WorldCover 2021",
+              "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium (CC BY 4.0)",
+              "url": "https://esa-worldcover.org/"
+            }
+          ]
+        },
+        {
+          "id": "population",
+          "type": "raster",
+          "theme": "impact",
+          "name": "Población",
+          "description": "Personas estimadas por celda en 2020. Es un modelo a 1 km, no un censo.",
+          "units": "personas",
+          "path": "mexicali/population/cube.bin",
+          "encoding": "int16-le",
+          "scale": 1.0,
+          "nodata": -32768,
+          "dates": [],
+          "referenceDate": "2020-01-01",
+          "valueRange": [
+            0.0,
+            101.0
+          ],
+          "paint": "sequential",
+          "palette": "heat",
+          "classes": [],
+          "source": "worldpop",
+          "products": [],
+          "credits": [
+            {
+              "name": "WorldPop 2020",
+              "attribution": "WorldPop (www.worldpop.org), University of Southampton, 2020 (CC BY 4.0)",
+              "url": "https://www.worldpop.org/"
+            }
+          ]
+        },
+        {
+          "id": "disturbance",
+          "type": "raster",
+          "theme": "movement",
+          "name": "Disturbios",
+          "description": "Dónde el radar perdió coherencia respecto a lo normal en ese punto: algo cambió entre dos pasadas, como obras, cosecha o inundación.",
+          "units": "clase",
+          "path": "mexicali/disturbance/cube.bin",
+          "encoding": "uint8",
+          "scale": 1.0,
+          "nodata": 0,
+          "dates": [
+            "2025-11-04",
+            "2025-11-16",
+            "2025-11-28",
+            "2025-12-10",
+            "2025-12-22",
+            "2026-01-03",
+            "2026-01-15",
+            "2026-01-27",
+            "2026-02-08",
+            "2026-02-20",
+            "2026-03-16",
+            "2026-04-09",
+            "2026-04-21",
+            "2026-05-03",
+            "2026-05-15",
+            "2026-05-27",
+            "2026-06-08",
+            "2026-06-20",
+            "2026-07-14",
+            "2026-07-26",
+            "2026-08-19",
+            "2026-08-31",
+            "2026-09-12",
+            "2026-09-24",
+            "2026-10-06",
+            "2026-10-18"
+          ],
+          "referenceDate": null,
+          "valueRange": [
+            1.0,
+            2.0
+          ],
+          "paint": "categorical",
+          "palette": "vik",
+          "classes": [
+            {
+              "value": 2,
+              "name": "Disturbio",
+              "color": "#ff6f00"
+            }
+          ],
+          "source": "nisar",
+          "products": [
+            "NISAR_L2_PR_GUNW_003_085_D_072_004_4000_SH_20251023T023258_20251023T023323_20251104T023258_20251104T023324_X05010_N_P_J_001",
+            "NISAR_L2_PR_GUNW_004_085_D_072_005_4000_SH_20251104T023258_20251104T023324_20251116T023259_20251116T023324_X05010_N_P_J_001",
+            "NISAR_L2_PR_GUNW_005_085_D_072_006_4000_SH_20251116T023259_20251116T023324_20251128T023250_20251128T023324_P05023_N_P_J_001",
+            "NISAR_L2_PR_GUNW_006_085_D_072_007_4000_SH_20251128T023250_20251128T023324_20251210T023250_20251210T023325_X05010_N_F_J_001",
+            "NISAR_L2_PR_GUNW_007_085_D_072_008_4000_SH_20251210T023250_20251210T023325_20251222T023251_20251222T023325_X05010_N_F_J_001",
+            "NISAR_L2_PR_GUNW_008_085_D_072_009_4000_SH_20251222T023251_20251222T023325_20260103T023251_20260103T023326_X05010_N_F_J_001",
+            "NISAR_L2_PR_GUNW_009_085_D_072_010_4000_SH_20260103T023251_20260103T023326_20260115T023252_20260115T023327_X05010_N_F_J_001",
+            "NISAR_L2_PR_GUNW_010_085_D_072_011_4000_SH_20260115T023252_20260115T023327_20260127T023252_20260127T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_011_085_D_072_012_4000_SH_20260127T023252_20260127T023327_20260208T023253_20260208T023328_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_012_085_D_072_013_4000_SH_20260208T023253_20260208T023328_20260220T023253_20260220T023328_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_013_085_D_072_015_4000_SH_20260220T023253_20260220T023328_20260316T023254_20260316T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_015_085_D_072_017_4000_SH_20260316T023254_20260316T023329_20260409T023255_20260409T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_017_085_D_072_018_4000_SH_20260409T023255_20260409T023329_20260421T023254_20260421T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_018_085_D_072_019_4000_SH_20260421T023254_20260421T023329_20260503T023254_20260503T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_019_085_D_072_020_4000_SH_20260503T023254_20260503T023329_20260515T023253_20260515T023328_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_020_085_D_072_021_4000_SH_20260515T023253_20260515T023328_20260527T023253_20260527T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_021_085_D_072_022_4000_SH_20260527T023253_20260527T023327_20260608T023252_20260608T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_022_085_D_072_023_4000_SH_20260608T023252_20260608T023327_20260620T023251_20260620T023326_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_024_085_D_072_025_4000_SH_20260702T023250_20260702T023325_20260714T023250_20260714T023325_P05023_F_F_J_001",
+            "NISAR_L2_PR_GUNW_025_085_D_072_026_4000_SH_20260714T023250_20260714T023325_20260726T023249_20260726T023324_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_026_085_D_072_028_4000_SH_20260726T023249_20260726T023324_20260819T023248_20260819T023323_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_028_085_D_072_029_4000_SH_20260819T023248_20260819T023323_20260831T023248_20260831T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_029_085_D_072_030_4000_SH_20260831T023248_20260831T023322_20260912T023248_20260912T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_030_085_D_072_031_4000_SH_20260912T023248_20260912T023322_20260924T023248_20260924T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_031_085_D_072_032_4000_SH_20260924T023248_20260924T023322_20261006T023248_20261006T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_032_085_D_072_033_4000_SH_20261006T023248_20261006T023322_20261018T023248_20261018T023322_P05023_N_F_J_001"
+          ],
+          "credits": [
+            {
+              "name": "NASA-ISRO SAR (NISAR) L2 GUNW",
+              "attribution": "NISAR data courtesy of NASA/JPL-Caltech and ISRO, distributed by the ASF DAAC",
+              "url": "https://search.asf.alaska.edu/"
+            }
+          ]
+        }
+      ],
+      "overlays": [
+        {
+          "id": "roads",
+          "name": "Caminos",
+          "kind": "road",
+          "path": "mexicali/roads.json",
+          "credits": [
+            {
+              "name": "OpenStreetMap",
+              "attribution": "© OpenStreetMap contributors (ODbL)",
+              "url": "https://www.openstreetmap.org/copyright"
+            }
+          ]
+        },
+        {
+          "id": "canals",
+          "name": "Canales",
+          "kind": "canal",
+          "path": "mexicali/canals.json",
+          "credits": [
+            {
+              "name": "OpenStreetMap",
+              "attribution": "© OpenStreetMap contributors (ODbL)",
+              "url": "https://www.openstreetmap.org/copyright"
             }
           ]
         }
@@ -178,14 +510,391 @@
         {
           "id": "tijuana-centro",
           "name": "Tijuana",
-          "description": "Fenómenos de esta región (expansión urbana, Río Tijuana) llegarán próximamente.",
+          "description": "Ciudad fronteriza sobre cañones y laderas.",
           "lon": -117.0382,
           "lat": 32.5149,
           "col": 163.618,
           "row": 147.005
         }
       ],
-      "layers": []
+      "layers": [
+        {
+          "id": "subsidence",
+          "type": "los-displacement",
+          "theme": "movement",
+          "name": "Hundimiento (desplazamiento LOS)",
+          "description": "Desplazamiento acumulado del suelo en la línea de vista del radar desde la primera fecha. Valores negativos = el suelo se aleja del satélite (hundimiento).",
+          "units": "cm",
+          "path": "tijuana/subsidence/cube.bin",
+          "encoding": "int16-le",
+          "scale": 0.1,
+          "nodata": -32768,
+          "dates": [
+            "2025-10-23",
+            "2025-11-04",
+            "2025-11-16",
+            "2025-11-28",
+            "2025-12-10",
+            "2025-12-22",
+            "2026-01-03",
+            "2026-01-15",
+            "2026-01-27",
+            "2026-02-08",
+            "2026-02-20",
+            "2026-03-16",
+            "2026-04-09",
+            "2026-04-21",
+            "2026-05-03",
+            "2026-05-15",
+            "2026-05-27",
+            "2026-06-08",
+            "2026-06-20",
+            "2026-07-02",
+            "2026-07-14",
+            "2026-07-26",
+            "2026-08-19",
+            "2026-08-31",
+            "2026-09-12",
+            "2026-09-24",
+            "2026-10-06",
+            "2026-10-18"
+          ],
+          "referenceDate": null,
+          "valueRange": [
+            -6.82,
+            4.27
+          ],
+          "paint": "diverging",
+          "palette": "vik",
+          "classes": [],
+          "source": "nisar",
+          "products": [
+            "NISAR_L2_PR_GUNW_003_085_D_072_004_4000_SH_20251023T023258_20251023T023323_20251104T023258_20251104T023324_X05010_N_P_J_001",
+            "NISAR_L2_PR_GUNW_004_085_D_072_005_4000_SH_20251104T023258_20251104T023324_20251116T023259_20251116T023324_P05023_N_P_J_001",
+            "NISAR_L2_PR_GUNW_005_085_D_072_006_4000_SH_20251116T023259_20251116T023324_20251128T023250_20251128T023324_P05023_N_P_J_001",
+            "NISAR_L2_PR_GUNW_006_085_D_072_007_4000_SH_20251128T023250_20251128T023324_20251210T023250_20251210T023325_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_007_085_D_072_008_4000_SH_20251210T023250_20251210T023325_20251222T023251_20251222T023325_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_008_085_D_072_009_4000_SH_20251222T023251_20251222T023325_20260103T023251_20260103T023326_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_009_085_D_072_010_4000_SH_20260103T023251_20260103T023326_20260115T023252_20260115T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_010_085_D_072_011_4000_SH_20260115T023252_20260115T023327_20260127T023252_20260127T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_011_085_D_072_012_4000_SH_20260127T023252_20260127T023327_20260208T023253_20260208T023328_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_012_085_D_072_013_4000_SH_20260208T023253_20260208T023328_20260220T023253_20260220T023328_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_013_085_D_072_015_4000_SH_20260220T023253_20260220T023328_20260316T023254_20260316T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_015_085_D_072_017_4000_SH_20260316T023254_20260316T023329_20260409T023255_20260409T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_017_085_D_072_018_4000_SH_20260409T023255_20260409T023329_20260421T023254_20260421T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_018_085_D_072_019_4000_SH_20260421T023254_20260421T023329_20260503T023254_20260503T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_019_085_D_072_020_4000_SH_20260503T023254_20260503T023329_20260515T023253_20260515T023328_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_020_085_D_072_021_4000_SH_20260515T023253_20260515T023328_20260527T023253_20260527T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_021_085_D_072_022_4000_SH_20260527T023253_20260527T023327_20260608T023252_20260608T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_022_085_D_072_023_4000_SH_20260608T023252_20260608T023327_20260620T023251_20260620T023326_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_024_085_D_072_025_4000_SH_20260702T023250_20260702T023325_20260714T023250_20260714T023325_P05023_F_F_J_001",
+            "NISAR_L2_PR_GUNW_025_085_D_072_026_4000_SH_20260714T023250_20260714T023325_20260726T023249_20260726T023324_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_026_085_D_072_028_4000_SH_20260726T023249_20260726T023324_20260819T023248_20260819T023323_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_028_085_D_072_029_4000_SH_20260819T023248_20260819T023323_20260831T023248_20260831T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_029_085_D_072_030_4000_SH_20260831T023248_20260831T023322_20260912T023248_20260912T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_030_085_D_072_031_4000_SH_20260912T023248_20260912T023322_20260924T023248_20260924T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_031_085_D_072_032_4000_SH_20260924T023248_20260924T023322_20261006T023248_20261006T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_032_085_D_072_033_4000_SH_20261006T023248_20261006T023322_20261018T023248_20261018T023322_P05023_N_F_J_001"
+          ],
+          "credits": [
+            {
+              "name": "NASA-ISRO SAR (NISAR) L2 GUNW",
+              "attribution": "NISAR data courtesy of NASA/JPL-Caltech and ISRO, distributed by the ASF DAAC",
+              "url": "https://search.asf.alaska.edu/"
+            }
+          ]
+        },
+        {
+          "id": "slope",
+          "type": "raster",
+          "theme": "impact",
+          "name": "Pendiente",
+          "description": "Inclinación del terreno, calculada del relieve.",
+          "units": "°",
+          "path": "tijuana/slope/cube.bin",
+          "encoding": "int16-le",
+          "scale": 0.1,
+          "nodata": -32768,
+          "dates": [],
+          "referenceDate": "2014-01-01",
+          "valueRange": [
+            0.0,
+            33.8
+          ],
+          "paint": "sequential",
+          "palette": "heat",
+          "classes": [],
+          "source": "derived",
+          "products": [],
+          "credits": [
+            {
+              "name": "Copernicus DEM GLO-30",
+              "attribution": "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+              "url": "https://registry.opendata.aws/copernicus-dem/"
+            }
+          ]
+        },
+        {
+          "id": "active-slopes",
+          "type": "raster",
+          "theme": "impact",
+          "name": "Laderas activas",
+          "description": "Terreno de más de 15° donde además el radar detecta más de 1 cm/año de movimiento. Señala dónde mirar; no confirma un deslizamiento.",
+          "units": "clase",
+          "path": "tijuana/active-slopes/cube.bin",
+          "encoding": "uint8",
+          "scale": 1.0,
+          "nodata": 0,
+          "dates": [],
+          "referenceDate": "2026-10-01",
+          "valueRange": [
+            1.0,
+            2.0
+          ],
+          "paint": "categorical",
+          "palette": "vik",
+          "classes": [
+            {
+              "value": 2,
+              "name": "Ladera activa",
+              "color": "#e53935"
+            }
+          ],
+          "source": "derived",
+          "products": [],
+          "credits": [
+            {
+              "name": "Copernicus DEM GLO-30",
+              "attribution": "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+              "url": "https://registry.opendata.aws/copernicus-dem/"
+            },
+            {
+              "name": "NASA-ISRO SAR (NISAR) L2 GUNW",
+              "attribution": "NISAR data courtesy of NASA/JPL-Caltech and ISRO, distributed by the ASF DAAC",
+              "url": "https://search.asf.alaska.edu/"
+            }
+          ]
+        },
+        {
+          "id": "landcover",
+          "type": "raster",
+          "theme": "impact",
+          "name": "Uso de suelo",
+          "description": "Cobertura del terreno en 2021. No viene de NISAR.",
+          "units": "clase",
+          "path": "tijuana/landcover/cube.bin",
+          "encoding": "uint8",
+          "scale": 1.0,
+          "nodata": 0,
+          "dates": [],
+          "referenceDate": "2021-01-01",
+          "valueRange": [
+            2.0,
+            9.0
+          ],
+          "paint": "categorical",
+          "palette": "vik",
+          "classes": [
+            {
+              "value": 2,
+              "name": "Árboles",
+              "color": "#2e7d32"
+            },
+            {
+              "value": 3,
+              "name": "Matorral",
+              "color": "#a1887f"
+            },
+            {
+              "value": 4,
+              "name": "Pastizal",
+              "color": "#cddc39"
+            },
+            {
+              "value": 5,
+              "name": "Cultivos",
+              "color": "#f2c14e"
+            },
+            {
+              "value": 6,
+              "name": "Zona urbana",
+              "color": "#d32f2f"
+            },
+            {
+              "value": 7,
+              "name": "Suelo desnudo",
+              "color": "#d7ccc8"
+            },
+            {
+              "value": 8,
+              "name": "Agua",
+              "color": "#1976d2"
+            },
+            {
+              "value": 9,
+              "name": "Humedal",
+              "color": "#26a69a"
+            }
+          ],
+          "source": "esa-worldcover",
+          "products": [],
+          "credits": [
+            {
+              "name": "ESA WorldCover 2021",
+              "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium (CC BY 4.0)",
+              "url": "https://esa-worldcover.org/"
+            }
+          ]
+        },
+        {
+          "id": "population",
+          "type": "raster",
+          "theme": "impact",
+          "name": "Población",
+          "description": "Personas estimadas por celda en 2020. Es un modelo a 1 km, no un censo.",
+          "units": "personas",
+          "path": "tijuana/population/cube.bin",
+          "encoding": "int16-le",
+          "scale": 1.0,
+          "nodata": -32768,
+          "dates": [],
+          "referenceDate": "2020-01-01",
+          "valueRange": [
+            0.0,
+            59.0
+          ],
+          "paint": "sequential",
+          "palette": "heat",
+          "classes": [],
+          "source": "worldpop",
+          "products": [],
+          "credits": [
+            {
+              "name": "WorldPop 2020",
+              "attribution": "WorldPop (www.worldpop.org), University of Southampton, 2020 (CC BY 4.0)",
+              "url": "https://www.worldpop.org/"
+            }
+          ]
+        },
+        {
+          "id": "disturbance",
+          "type": "raster",
+          "theme": "movement",
+          "name": "Disturbios",
+          "description": "Dónde el radar perdió coherencia respecto a lo normal en ese punto: algo cambió entre dos pasadas, como obras, cosecha o inundación.",
+          "units": "clase",
+          "path": "tijuana/disturbance/cube.bin",
+          "encoding": "uint8",
+          "scale": 1.0,
+          "nodata": 0,
+          "dates": [
+            "2025-11-04",
+            "2025-11-16",
+            "2025-11-28",
+            "2025-12-10",
+            "2025-12-22",
+            "2026-01-03",
+            "2026-01-15",
+            "2026-01-27",
+            "2026-02-08",
+            "2026-02-20",
+            "2026-03-16",
+            "2026-04-09",
+            "2026-04-21",
+            "2026-05-03",
+            "2026-05-15",
+            "2026-05-27",
+            "2026-06-08",
+            "2026-06-20",
+            "2026-07-14",
+            "2026-07-26",
+            "2026-08-19",
+            "2026-08-31",
+            "2026-09-12",
+            "2026-09-24",
+            "2026-10-06",
+            "2026-10-18"
+          ],
+          "referenceDate": null,
+          "valueRange": [
+            1.0,
+            2.0
+          ],
+          "paint": "categorical",
+          "palette": "vik",
+          "classes": [
+            {
+              "value": 2,
+              "name": "Disturbio",
+              "color": "#ff6f00"
+            }
+          ],
+          "source": "nisar",
+          "products": [
+            "NISAR_L2_PR_GUNW_003_085_D_072_004_4000_SH_20251023T023258_20251023T023323_20251104T023258_20251104T023324_X05010_N_P_J_001",
+            "NISAR_L2_PR_GUNW_004_085_D_072_005_4000_SH_20251104T023258_20251104T023324_20251116T023259_20251116T023324_P05023_N_P_J_001",
+            "NISAR_L2_PR_GUNW_005_085_D_072_006_4000_SH_20251116T023259_20251116T023324_20251128T023250_20251128T023324_P05023_N_P_J_001",
+            "NISAR_L2_PR_GUNW_006_085_D_072_007_4000_SH_20251128T023250_20251128T023324_20251210T023250_20251210T023325_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_007_085_D_072_008_4000_SH_20251210T023250_20251210T023325_20251222T023251_20251222T023325_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_008_085_D_072_009_4000_SH_20251222T023251_20251222T023325_20260103T023251_20260103T023326_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_009_085_D_072_010_4000_SH_20260103T023251_20260103T023326_20260115T023252_20260115T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_010_085_D_072_011_4000_SH_20260115T023252_20260115T023327_20260127T023252_20260127T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_011_085_D_072_012_4000_SH_20260127T023252_20260127T023327_20260208T023253_20260208T023328_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_012_085_D_072_013_4000_SH_20260208T023253_20260208T023328_20260220T023253_20260220T023328_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_013_085_D_072_015_4000_SH_20260220T023253_20260220T023328_20260316T023254_20260316T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_015_085_D_072_017_4000_SH_20260316T023254_20260316T023329_20260409T023255_20260409T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_017_085_D_072_018_4000_SH_20260409T023255_20260409T023329_20260421T023254_20260421T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_018_085_D_072_019_4000_SH_20260421T023254_20260421T023329_20260503T023254_20260503T023329_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_019_085_D_072_020_4000_SH_20260503T023254_20260503T023329_20260515T023253_20260515T023328_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_020_085_D_072_021_4000_SH_20260515T023253_20260515T023328_20260527T023253_20260527T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_021_085_D_072_022_4000_SH_20260527T023253_20260527T023327_20260608T023252_20260608T023327_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_022_085_D_072_023_4000_SH_20260608T023252_20260608T023327_20260620T023251_20260620T023326_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_024_085_D_072_025_4000_SH_20260702T023250_20260702T023325_20260714T023250_20260714T023325_P05023_F_F_J_001",
+            "NISAR_L2_PR_GUNW_025_085_D_072_026_4000_SH_20260714T023250_20260714T023325_20260726T023249_20260726T023324_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_026_085_D_072_028_4000_SH_20260726T023249_20260726T023324_20260819T023248_20260819T023323_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_028_085_D_072_029_4000_SH_20260819T023248_20260819T023323_20260831T023248_20260831T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_029_085_D_072_030_4000_SH_20260831T023248_20260831T023322_20260912T023248_20260912T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_030_085_D_072_031_4000_SH_20260912T023248_20260912T023322_20260924T023248_20260924T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_031_085_D_072_032_4000_SH_20260924T023248_20260924T023322_20261006T023248_20261006T023322_P05023_N_F_J_001",
+            "NISAR_L2_PR_GUNW_032_085_D_072_033_4000_SH_20261006T023248_20261006T023322_20261018T023248_20261018T023322_P05023_N_F_J_001"
+          ],
+          "credits": [
+            {
+              "name": "NASA-ISRO SAR (NISAR) L2 GUNW",
+              "attribution": "NISAR data courtesy of NASA/JPL-Caltech and ISRO, distributed by the ASF DAAC",
+              "url": "https://search.asf.alaska.edu/"
+            }
+          ]
+        }
+      ],
+      "overlays": [
+        {
+          "id": "roads",
+          "name": "Caminos",
+          "kind": "road",
+          "path": "tijuana/roads.json",
+          "credits": [
+            {
+              "name": "OpenStreetMap",
+              "attribution": "© OpenStreetMap contributors (ODbL)",
+              "url": "https://www.openstreetmap.org/copyright"
+            }
+          ]
+        },
+        {
+          "id": "canals",
+          "name": "Canales",
+          "kind": "canal",
+          "path": "tijuana/canals.json",
+          "credits": [
+            {
+              "name": "OpenStreetMap",
+              "attribution": "© OpenStreetMap contributors (ODbL)",
+              "url": "https://www.openstreetmap.org/copyright"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
