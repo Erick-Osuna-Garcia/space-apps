@@ -5,9 +5,11 @@ import {
 	categoricalPlane,
 	classColors,
 	continuousPlane,
+	eventView,
 	nearestDateIndex,
 	readLayer,
 	resolveView,
+	sourceAt,
 } from "./catalog";
 
 const disp = {
@@ -126,5 +128,33 @@ describe("readLayer", () => {
 		const d = Uint8Array.from([2, 0]);
 		expect(readLayer(land, d, region, 0.5, 0.5, null)).toBe("Cultivos");
 		expect(readLayer(land, d, region, 1.5, 0.5, null)).toBe("Sin dato");
+	});
+});
+
+describe("sourceAt", () => {
+	const layer = {
+		source: "nisar",
+		segments: [
+			{ until: "2025-10-01", source: "sentinel-1" },
+			{ until: "2026-10-18", source: "nisar" },
+		],
+	} as const as Pick<Layer, "source" | "segments">;
+	it("elige la fuente por tramo", () => {
+		expect(sourceAt(layer, "2020-01-01")).toBe("sentinel-1");
+		expect(sourceAt(layer, "2025-10-01")).toBe("sentinel-1");
+		expect(sourceAt(layer, "2026-01-01")).toBe("nisar");
+	});
+	it("sin tramos usa la fuente de la capa", () => {
+		expect(sourceAt({ source: "nisar", segments: [] }, "2020-01-01")).toBe(
+			"nisar",
+		);
+	});
+});
+
+describe("eventView", () => {
+	it("lleva cada evento a su capa", () => {
+		expect(eventView("water")).toBe("layer:water");
+		expect(eventView("subsidence")).toBe("zones");
+		expect(eventView("rate-change")).toBe("zones");
 	});
 });

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { pickTerrain } from "../lib/pick";
 import { useFlight } from "./flight";
+import { MAP_SCALE } from "./terrainGeometry";
 
 // Isométrico verdadero: azimut 45°, elevación atan(1/√2) ≈ 35.264°.
 const AZIMUTH = Math.PI / 4;
@@ -18,8 +19,8 @@ const OFFSET = new THREE.Vector3(
 const VIEW_DIR = OFFSET.clone().normalize().negate();
 
 /** Celdas visibles en el ancho de la pantalla: límites del zoom. */
-const MIN_CELLS = 40;
-const DEFAULT_CELLS = 170;
+const MIN_CELLS = 40 / MAP_SCALE;
+const DEFAULT_CELLS = 170 / MAP_SCALE;
 const CLICK_TOLERANCE_PX = 6;
 
 interface IsoCameraProps {
@@ -91,6 +92,7 @@ export function IsoCamera({
 			);
 			if (hit) {
 				flight.target = hit;
+				flight.tap = hit;
 				pickRef.current(hit.col, hit.row);
 			}
 		};

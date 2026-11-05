@@ -12,7 +12,7 @@ const SOURCE_NOTICE: Partial<
 	},
 	"sentinel-1": {
 		label: "Datos Sentinel-1",
-		help: "Esta capa viene de Sentinel-1 (ESA/Copernicus), no de NISAR.",
+		help: "Estas fechas son anteriores a NISAR y vienen de Sentinel-1 (ESA/Copernicus), procesadas por OPERA.",
 	},
 	"esa-worldcover": {
 		label: "Fuente: ESA WorldCover",
@@ -29,8 +29,8 @@ const SOURCE_NOTICE: Partial<
 };
 
 /** Aviso discreto y permanente cuando la capa activa no es una medición NISAR. */
-export function DataNotice({ layer }: { layer: Layer | null }) {
-	const notice = layer ? SOURCE_NOTICE[layer.source] : undefined;
+export function DataNotice({ source }: { source: Layer["source"] | null }) {
+	const notice = source ? SOURCE_NOTICE[source] : undefined;
 	if (!notice) return null;
 	return (
 		<span className="pointer-events-auto mt-1.5 inline-flex items-center gap-1 text-[0.7rem] text-slate-300">
@@ -118,7 +118,7 @@ export function ContextContent() {
 				<p>
 					<strong>Movimiento</strong>: cuánto y cómo se mueve el suelo,
 					incluidas las zonas, dónde se dobla el terreno, la separación vertical
-					y este-oeste, y los disturbios. <strong>Superficie</strong>:
+					y este-oeste, y los cambios bruscos. <strong>Superficie</strong>:
 					construcción, vegetación y cambios, con las polarizaciones HH y HV.{" "}
 					<strong>Agua</strong>: agua en superficie y humedad del suelo.{" "}
 					<strong>Impacto</strong>: pendiente, población, uso de suelo y, sobre
@@ -142,11 +142,10 @@ export function ContextContent() {
 			<section>
 				<h3>Lo que falta y lo que viene</h3>
 				<p>
-					LOS mezcla movimiento vertical y horizontal; combinar trayectorias
-					ascendentes y descendentes permitiría separarlos. Con NISAR también
-					podremos seguir los ciclos agrícolas del Valle de Mexicali, la
-					expansión urbana de Tijuana y las inundaciones del Río Tijuana: capas
-					que llegarán a este explorador.
+					Acumulado y Velocidad mezclan movimiento vertical y horizontal; las
+					capas Vertical y Este-oeste los separan combinando dos órbitas. Con
+					más años de NISAR se podrán seguir mejor tendencias y ciclos de
+					temporada en el Valle de Mexicali.
 				</p>
 			</section>
 		</div>

@@ -1,4 +1,5 @@
 import { queryOptions, skipToken } from "@tanstack/react-query";
+import { z } from "zod";
 import type { Feature } from "../lib/infrastructure";
 import {
 	type Layer,
@@ -111,5 +112,37 @@ export const overlayQuery = (overlay: Overlay | null) =>
 	queryOptions({
 		queryKey: ["explorer", "overlay", overlay?.path],
 		queryFn: overlay ? () => fetchOverlay(overlay) : skipToken,
+		...immutable,
+	});
+
+const ImpactEventSchema = z.object({
+	id: z.string(),
+	type: z.string(),
+	date: z.string(),
+	dateEnd: z.string().nullable(),
+	place: z.string(),
+	col: z.number(),
+	row: z.number(),
+	areaKm2: z.number(),
+	title: z.string(),
+	detail: z.string(),
+	source: z.string(),
+});
+
+export type ImpactEvent = z.infer<typeof ImpactEventSchema>;
+
+async function fetchEvents(path: string): Promise<ImpactEvent[]> {
+	const res = await fetch(`${DATA_BASE}/${path}`);
+	if (!res.ok) throw new Error(`No se pudo cargar ${path}: HTTP ${res.status}`);
+	return z.array(ImpactEventSchema).parse(await res.json());
+}
+
+/** Eventos de impacto detectados por el pipeline. */
+export const eventsQuery = (region: Region | null) =>
+	queryOptions({
+		queryKey: ["explorer", "events", region?.id, region?.events],
+		queryFn: region?.events
+			? () => fetchEvents(region.events as string)
+			: skipToken,
 		...immutable,
 	});

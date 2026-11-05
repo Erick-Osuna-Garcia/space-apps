@@ -1,12 +1,27 @@
 import * as THREE from "three";
+import { sampleBilinear } from "../lib/grid";
 import type { Region } from "../manifest";
 
 export const DEFAULT_EXAGGERATION = 3;
-export const HOVER_HEIGHT = 7; // unidades de escena sobre el terreno
+/** El mapa se ve este número de veces más grande que la nave. */
+export const MAP_SCALE = 3;
+export const HOVER_HEIGHT = 7 / MAP_SCALE; // unidades de escena sobre el terreno
 
 /** Unidades de escena por metro de altura (1 unidad horizontal = 1 celda). */
 export const verticalScale = (region: Region, exaggeration: number) =>
 	exaggeration / region.cellSizeM;
+
+/** Altura del relieve en unidades de escena, sin hundimiento 3D. */
+export function baseHeightFn(
+	region: Region,
+	heights: Int16Array,
+	exaggeration: number,
+) {
+	const vs = verticalScale(region, exaggeration);
+	const { width, height } = region;
+	return (col: number, row: number) =>
+		sampleBilinear(heights, width, height, col, row) * vs;
+}
 
 // Tinte hipsométrico estilizado para el desierto de Baja California.
 const HYPSO: Array<[number, [number, number, number]]> = [

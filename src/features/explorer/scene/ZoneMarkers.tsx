@@ -3,8 +3,9 @@ import { useRef } from "react";
 import * as THREE from "three";
 import { BAND_COLORS, type Zone } from "../lib/impact";
 import { placeLabel } from "./placeLabel";
+import { MAP_SCALE } from "./terrainGeometry";
 
-const MARKER_HEIGHT = 14;
+const MARKER_HEIGHT = 14 / MAP_SCALE;
 
 interface ZoneMarkersProps {
 	/** Zonas principales, ya limitadas; su índice es la clave estable de la etiqueta. */
@@ -40,12 +41,12 @@ export function ZoneMarkers({ zones, heightAt, labels }: ZoneMarkersProps) {
 					key={rank}
 					position={[zone.col, heightAt(zone.col, zone.row), zone.row]}
 				>
-					<mesh position={[0, MARKER_HEIGHT / 2 - 1, 0]}>
-						<cylinderGeometry args={[0.3, 0.3, MARKER_HEIGHT - 2, 6]} />
+					<mesh position={[0, MARKER_HEIGHT / 2 - 0.5, 0]}>
+						<cylinderGeometry args={[0.12, 0.12, MARKER_HEIGHT - 1, 6]} />
 						<meshBasicMaterial color={BAND_COLORS[zone.band]} />
 					</mesh>
-					<mesh position={[0, 0.8, 0]}>
-						<octahedronGeometry args={[1.6]} />
+					<mesh position={[0, 0.3, 0]}>
+						<octahedronGeometry args={[0.6]} />
 						<meshBasicMaterial color={BAND_COLORS[zone.band]} />
 					</mesh>
 				</group>

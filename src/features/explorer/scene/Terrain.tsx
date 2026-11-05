@@ -2,22 +2,41 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { type Palette, symmetricLimit } from "../lib/colormap";
+import {
+	addRipple,
+	createRipples,
+	isWaterAt,
+	MAX_RIPPLES,
+	shipRipple,
+} from "../lib/water";
 import type { Layer, Region } from "../manifest";
+import { useFlight } from "./flight";
 import {
 	bandColors,
 	bandsTexture,
-	createLayerUniforms,
 	createTerrainMaterial,
 	cubeTexture,
 	deformCubeTexture,
 	fieldTexture,
+	type LayerUniforms,
 	PaintMode,
 	type PaintModeValue,
 	paletteLut,
+	waterTexture,
 } from "./layerMaterial";
 import { buildTerrain } from "./terrainGeometry";
 
 const TRANSITION_S = 2;
+/** Velocidad de la nave, en celdas por segundo, desde la que deja ondas. */
+const RIPPLE_MIN_SPEED = 0.5;
+
+export interface WaterData {
+	/** Máscara de `waterMask`. */
+	mask: Uint8Array;
+	dates: number;
+	/** Fecha de agua que corresponde a la fecha actual. */
+	index: number;
+}
 
 interface TerrainProps {
 	region: Region;
@@ -44,6 +63,11 @@ interface TerrainProps {
 	deformScale: number;
 	/** Cubo de geometría (cm) con huecos rellenados; null = sin hundimiento 3D. */
 	deformCube: Float32Array | null;
+	/** Compartidos con lo que debe seguir al terreno, como las cintas de los caminos. */
+	uniforms: LayerUniforms;
+	water: WaterData | null;
+	/** Oleaje y ondas encendidos. */
+	waterMotion: boolean;
 }
 
 export function Terrain({
@@ -67,7 +91,11 @@ export function Terrain({
 	contour,
 	deformScale,
 	deformCube,
+	uniforms,
+	water,
+	waterMotion,
 }: TerrainProps) {
+	const flight = useFlight();
 	const geo = useMemo(
 		() => buildTerrain(region, heights, exaggeration, step),
 		[region, heights, exaggeration, step],
@@ -80,7 +108,7 @@ export function Terrain({
 		[geo],
 	);
 
-	const uniforms = useMemo(createLayerUniforms, []);
+	const ripples = useMemo(createRipples, []);
 	const material = useMemo(() => createTerrainMaterial(uniforms), [uniforms]);
 	const skirtMaterial = useMemo(
 		() => new THREE.MeshStandardMaterial({ color: "#3b2f2a", roughness: 1 }),
@@ -96,6 +124,7 @@ export function Terrain({
 			uniforms.uField.value.dispose();
 			uniforms.uBands.value.dispose();
 			uniforms.uDeformCube.value.dispose();
+			uniforms.uWater.value.dispose();
 		},
 		[material, skirtMaterial, uniforms],
 	);
@@ -117,8 +146,30 @@ export function Terrain({
 		uniforms.uCube.value.dispose();
 		uniforms.uCube.value = tex;
 		uniforms.uLimit.value = symmetricLimit(layer.valueRange);
-		uniforms.uTexel.value.set(1 / region.width, 1 / region.height);
 	}, [layer, cube, region, uniforms]);
+
+	useEffect(() => {
+		uniforms.uTexel.value.set(1 / region.width, 1 / region.height);
+	}, [region, uniforms]);
+
+	// Máscara de agua: el mapa funciona igual mientras no llega.
+	const waterMask = water?.mask ?? null;
+	const waterDates = water?.dates ?? 0;
+	const waterIndex = water?.index ?? 0;
+	useEffect(() => {
+		if (!waterMask) {
+			uniforms.uWaterOn.value = 0;
+			return;
+		}
+		uniforms.uWater.value.dispose();
+		uniforms.uWater.value = waterTexture(
+			waterMask,
+			region.width,
+			region.height,
+			waterDates,
+		);
+		uniforms.uWaterOn.value = 1;
+	}, [waterMask, waterDates, region, uniforms]);
 
 	// Geometría del hundimiento 3D.
 	useEffect(() => {
@@ -168,6 +219,15 @@ export function Terrain({
 		u.uMix.value = reducedMotion ? 1 : 0;
 	}, [dateIndex, reducedMotion, uniforms]);
 
+	useEffect(() => {
+		const u = uniforms;
+		const current =
+			u.uWaterA.value + (u.uWaterB.value - u.uWaterA.value) * u.uWaterMix.value;
+		u.uWaterA.value = Math.round(current);
+		u.uWaterB.value = waterIndex;
+		u.uWaterMix.value = reducedMotion ? 1 : 0;
+	}, [waterIndex, reducedMotion, uniforms]);
+
 	useFrame((_, dt) => {
 		const ready = paintMode === PaintMode.BANDS ? bands : field;
 		const hasCube = Boolean(layer && cube);
@@ -183,6 +243,34 @@ export function Terrain({
 				1,
 				uniforms.uMix.value + dt / TRANSITION_S,
 			);
+		}
+		if (uniforms.uWaterMix.value < 1) {
+			uniforms.uWaterMix.value = Math.min(
+				1,
+				uniforms.uWaterMix.value + dt / TRANSITION_S,
+			);
+		}
+
+		const tap = flight.tap;
+		flight.tap = null;
+		if (!waterMotion || reducedMotion) return;
+		const time = uniforms.uTime.value + dt;
+		uniforms.uTime.value = time;
+		if (!waterMask) return;
+		const over = (col: number, row: number) =>
+			isWaterAt(waterMask, region.width, region.height, waterIndex, col, row);
+		if (tap && over(tap.col, tap.row))
+			addRipple(ripples, tap.col, tap.row, time);
+		shipRipple(
+			ripples,
+			flight.col,
+			flight.row,
+			time,
+			Math.hypot(flight.vx, flight.vz) >= RIPPLE_MIN_SPEED,
+			over(flight.col, flight.row),
+		);
+		for (let i = 0; i < MAX_RIPPLES; i++) {
+			uniforms.uRipples.value[i].fromArray(ripples.items, i * 3);
 		}
 	});
 

@@ -150,3 +150,25 @@ export function readLayer(
 	}
 	return `${(raw * layer.scale).toFixed(1)} ${layer.units}`;
 }
+
+/** Fuente de una capa en una fecha, para capas que combinan satélites. */
+export function sourceAt(
+	layer: Pick<Layer, "source" | "segments">,
+	date: string | null,
+): Layer["source"] {
+	if (!date) return layer.source;
+	return layer.segments.find((s) => date <= s.until)?.source ?? layer.source;
+}
+
+export const SOURCE_NAMES: Partial<Record<Layer["source"], string>> = {
+	nisar: "NISAR",
+	"sentinel-1": "Sentinel-1",
+};
+
+/** Capa que mejor muestra un tipo de evento. */
+export function eventView(type: string): MapView {
+	if (type === "water" || type === "disturbance" || type === "change") {
+		return rasterView(type);
+	}
+	return "zones";
+}

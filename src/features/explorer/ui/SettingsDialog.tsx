@@ -1,4 +1,4 @@
-import { Mountain, Route, X } from "lucide-react";
+import { Mountain, Route, Waves, X } from "lucide-react";
 import { Dialog } from "radix-ui";
 import { Slider } from "#/components/ui/slider";
 import { Switch } from "#/components/ui/switch";
@@ -19,6 +19,9 @@ interface SettingsDialogProps {
 	onDeformFactor: (factor: DeformFactor) => void;
 	overlays: Array<{ id: string; name: string; on: boolean; km: number | null }>;
 	onOverlay: (id: string, on: boolean) => void;
+	hasWater: boolean;
+	waterMotion: boolean;
+	onWaterMotion: (on: boolean) => void;
 }
 
 function Row({
@@ -70,6 +73,9 @@ export function SettingsDialog({
 	onDeformFactor,
 	overlays,
 	onOverlay,
+	hasWater,
+	waterMotion,
+	onWaterMotion,
 }: SettingsDialogProps) {
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -133,6 +139,21 @@ export function SettingsDialog({
 								En rojo, los tramos en zona de cambio. Muestra exposición; no
 								confirma daños.
 							</p>
+						</>
+					)}
+
+					{hasWater && (
+						<>
+							<Heading>
+								<Waves className="size-3.5" aria-hidden /> Agua
+							</Heading>
+							<Row
+								id="set-water"
+								label="Agua animada"
+								detail="La extensión viene de las mediciones; el oleaje y las ondas son decorativos"
+								checked={waterMotion}
+								onChange={onWaterMotion}
+							/>
 						</>
 					)}
 

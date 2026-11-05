@@ -24,7 +24,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "Dancing with the SARs · Explorador NISAR de Mexicali y Tijuana",
+				title: "Dancing with the SARs · Explorador NISAR de Mexicali",
 			},
 			{
 				name: "description",

@@ -1,4 +1,4 @@
-import { BookOpen, Info, Satellite, Settings } from "lucide-react";
+import { BookOpen, Info, ListChecks, Satellite, Settings } from "lucide-react";
 import type { Region } from "../manifest";
 import { Panel } from "./Panel";
 
@@ -8,6 +8,7 @@ interface TopBarProps {
 	onOpenContext: () => void;
 	onOpenCredits: () => void;
 	onOpenSettings: () => void;
+	onOpenEvents: () => void;
 	/** Aviso de origen de los datos, bajo el nombre de la región. */
 	notice?: React.ReactNode;
 }
@@ -18,6 +19,7 @@ export function TopBar({
 	onOpenContext,
 	onOpenCredits,
 	onOpenSettings,
+	onOpenEvents,
 	notice,
 }: TopBarProps) {
 	return (
@@ -39,6 +41,9 @@ export function TopBar({
 				{notice}
 			</Panel>
 			<div className="pointer-events-auto flex gap-2">
+				<HudButton onClick={onOpenEvents} label="Eventos">
+					<ListChecks className="size-4" aria-hidden />
+				</HudButton>
 				<HudButton onClick={onOpenSettings} label="Ajustes">
 					<Settings className="size-4" aria-hidden />
 				</HudButton>

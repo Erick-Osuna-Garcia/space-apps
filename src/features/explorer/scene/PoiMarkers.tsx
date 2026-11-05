@@ -3,8 +3,9 @@ import { useRef } from "react";
 import * as THREE from "three";
 import type { Poi } from "../manifest";
 import { placeLabel } from "./placeLabel";
+import { MAP_SCALE } from "./terrainGeometry";
 
-const LABEL_HEIGHT = 20;
+const LABEL_HEIGHT = 20 / MAP_SCALE;
 
 interface PoiMarkersProps {
 	pois: Poi[];
@@ -40,12 +41,12 @@ export function PoiMarkers({ pois, heightAt, labels }: PoiMarkersProps) {
 				const y = heightAt(poi.col, poi.row);
 				return (
 					<group key={poi.id} position={[poi.col, y, poi.row]}>
-						<mesh position={[0, LABEL_HEIGHT / 2 - 1, 0]}>
-							<cylinderGeometry args={[0.25, 0.25, LABEL_HEIGHT - 2, 6]} />
+						<mesh position={[0, LABEL_HEIGHT / 2 - 0.5, 0]}>
+							<cylinderGeometry args={[0.1, 0.1, LABEL_HEIGHT - 1, 6]} />
 							<meshBasicMaterial color="#fbbf24" transparent opacity={0.55} />
 						</mesh>
-						<mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.4, 0]}>
-							<ringGeometry args={[2.2, 3, 24]} />
+						<mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.2, 0]}>
+							<ringGeometry args={[0.75, 1, 24]} />
 							<meshBasicMaterial color="#fbbf24" transparent opacity={0.8} />
 						</mesh>
 					</group>

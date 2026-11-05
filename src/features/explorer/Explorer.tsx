@@ -5,6 +5,8 @@ import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useKeyboard } from "./controls/useKeyboard";
 import {
+	eventsQuery,
+	type ImpactEvent,
 	layerCubeQuery,
 	manifestQuery,
 	overlayQuery,
@@ -23,10 +25,13 @@ import {
 	classColors,
 	continuousPlane,
 	displacementLayer,
+	eventView,
 	NO_READING,
 	nearestDateIndex,
 	readLayer,
 	resolveView,
+	SOURCE_NAMES,
+	sourceAt,
 } from "./lib/catalog";
 import {
 	elapsedText,
@@ -51,13 +56,15 @@ import {
 	toSegments,
 } from "./lib/infrastructure";
 import { fillForDisplay, robustLimit, velocityField } from "./lib/stats";
+import { waterDateIndex, waterMask } from "./lib/water";
 import type { Overlay, Poi, Region } from "./manifest";
 import { createFlight, FlightContext, teleport } from "./scene/flight";
 import { PaintMode } from "./scene/layerMaterial";
 import { Scene } from "./scene/Scene";
-import { DEFAULT_EXAGGERATION, verticalScale } from "./scene/terrainGeometry";
+import { baseHeightFn, DEFAULT_EXAGGERATION } from "./scene/terrainGeometry";
 import { explorerStore, layerUi, type MapView, overlayOn } from "./store";
 import { DateTitle } from "./ui/DateTitle";
+import { EventsList } from "./ui/EventsList";
 import { Inspector, type InspectorRow } from "./ui/Inspector";
 import { LayerPanel } from "./ui/LayerPanel";
 import {
@@ -279,21 +286,62 @@ function ExplorerScene() {
 		[state.deform3d, region, timelineLayer, activeCube],
 	);
 
+	const baseHeightAt = useMemo(
+		() =>
+			region && terrain.data
+				? baseHeightFn(region, terrain.data, exaggeration)
+				: () => 0,
+		[region, terrain.data],
+	);
 	const heightAt = useMemo(() => {
 		if (!region || !terrain.data) return () => 0;
-		const vs = verticalScale(region, exaggeration);
-		const data = terrain.data;
 		const { width: W, height: H } = region;
 		const plane = W * H;
 		const layer = timelineLayer;
 		const offset = Math.min(dispIndex, (layer?.dates.length ?? 1) - 1) * plane;
 		return (col: number, row: number) => {
-			const base = sampleBilinear(data, W, H, col, row) * vs;
+			const base = baseHeightAt(col, row);
 			if (!deformScale || !deformCube) return base;
 			const d = sampleBilinear(deformCube, W, H, col, row, undefined, offset);
 			return Number.isFinite(d) ? base + d * deformScale : base;
 		};
-	}, [region, terrain.data, deformScale, deformCube, timelineLayer, dispIndex]);
+	}, [
+		region,
+		terrain.data,
+		baseHeightAt,
+		deformScale,
+		deformCube,
+		timelineLayer,
+		dispIndex,
+	]);
+
+	// Agua: se carga en segundo plano; si falla, el mapa sigue con su color de siempre.
+	const waterLayer = region?.layers.find((l) => l.id === "water") ?? null;
+	const waterData = useQuery(rasterQuery(region, waterLayer));
+	const waterCube = waterData.data;
+	const waterGrid = useMemo(
+		() =>
+			region && waterLayer && waterCube instanceof Uint8Array
+				? waterMask(
+						waterCube,
+						region.width,
+						region.height,
+						waterLayer.dates.length,
+					)
+				: null,
+		[region, waterLayer, waterCube],
+	);
+	const water = useMemo(
+		() =>
+			waterGrid && waterLayer
+				? {
+						mask: waterGrid,
+						dates: waterLayer.dates.length,
+						index: waterDateIndex(waterLayer.dates, currentDate),
+					}
+				: null,
+		[waterGrid, waterLayer, currentDate],
+	);
 
 	// La nave, los faros y el picking siguen la superficie actual (incluido el hundimiento 3D).
 	useEffect(() => {
@@ -358,6 +406,21 @@ function ExplorerScene() {
 		() => store.actions.advanceDate(dateCount),
 		[dateCount],
 	);
+	const events = useQuery(eventsQuery(region));
+	const goToEvent = (event: ImpactEvent) => {
+		const next = catalog.find((c) => c.view === eventView(event.type));
+		if (next) {
+			store.actions.setView(
+				next.view,
+				nearestDateIndex(
+					next.layer ? next.layer.dates : (timelineLayer?.dates ?? []),
+					event.dateEnd ?? event.date,
+				),
+			);
+		}
+		store.actions.setPlaying(false);
+		flight.target = { col: event.col, row: event.row };
+	};
 	const selectItem = (next: CatalogItem) =>
 		store.actions.setView(
 			next.view,
@@ -528,6 +591,9 @@ function ExplorerScene() {
 		? gridToLonLat(region, inspected.col, inspected.row)
 		: [0, 0];
 
+	const shownLayer = raster ?? activeLayer;
+	const currentSource = shownLayer ? sourceAt(shownLayer, currentDate) : null;
+
 	const sceneReady = terrain.data && readyRegion === region.id;
 
 	return (
@@ -551,6 +617,7 @@ function ExplorerScene() {
 								dateIndex={dispIndex}
 								reducedMotion={reducedMotion}
 								heightAt={heightAt}
+								baseHeightAt={baseHeightAt}
 								paintMode={paintMode}
 								field={field}
 								fieldLimit={fieldLimit}
@@ -568,6 +635,8 @@ function ExplorerScene() {
 								zoneLabels={zoneLabels}
 								deformScale={deformScale}
 								deformCube={deformCube}
+								water={water}
+								waterMotion={state.waterMotion}
 								keys={keys}
 								labels={labels}
 								store={store}
@@ -622,6 +691,9 @@ function ExplorerScene() {
 						km: overlayBands ? o.km : null,
 					}))}
 					onOverlay={store.actions.setOverlay}
+					hasWater={Boolean(waterLayer)}
+					waterMotion={state.waterMotion}
+					onWaterMotion={store.actions.setWaterMotion}
 				/>
 
 				<WarpOverlay active={state.warping} reducedMotion={reducedMotion} />
@@ -638,7 +710,8 @@ function ExplorerScene() {
 							store.actions.setCreditsOpen(!state.creditsOpen)
 						}
 						onOpenSettings={() => store.actions.setSettingsOpen(true)}
-						notice={<DataNotice layer={raster ?? activeLayer} />}
+						onOpenEvents={() => store.actions.setEventsOpen(!state.eventsOpen)}
+						notice={<DataNotice source={currentSource} />}
 					/>
 					{compact && (
 						<PoiList
@@ -661,6 +734,14 @@ function ExplorerScene() {
 							)}
 						</div>
 						<div className="flex max-h-full min-h-0 flex-col items-end gap-3 overflow-y-auto">
+							{state.eventsOpen && (
+								<SidePanel
+									title="Eventos detectados"
+									onClose={() => store.actions.setEventsOpen(false)}
+								>
+									<EventsList events={events.data ?? []} onSelect={goToEvent} />
+								</SidePanel>
+							)}
 							{state.contextOpen && (
 								<SidePanel
 									title="Contexto científico"
@@ -681,6 +762,7 @@ function ExplorerScene() {
 								</SidePanel>
 							)}
 							{(!compact || layersOpen) &&
+								!state.eventsOpen &&
 								!state.contextOpen &&
 								!state.creditsOpen && (
 									<>
@@ -744,7 +826,12 @@ function ExplorerScene() {
 								<div className="w-full max-w-2xl">
 									<DateTitle
 										date={fmtShortDate(currentDate)}
-										subtitle={elapsedText(timelineDates[0], currentDate)}
+										subtitle={[
+											elapsedText(timelineDates[0], currentDate),
+											currentSource && SOURCE_NAMES[currentSource],
+										]
+											.filter(Boolean)
+											.join(" · ")}
 										announce={!state.playing}
 									/>
 									<Timeline

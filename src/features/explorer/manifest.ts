@@ -68,6 +68,12 @@ const RawLayer = z.object({
 	]),
 	products: z.array(z.string()),
 	credits: z.array(Credit),
+	/** Tramos de fechas de una capa con varias fuentes. */
+	segments: z
+		.array(
+			z.object({ until: z.string(), source: z.enum(["nisar", "sentinel-1"]) }),
+		)
+		.default([]),
 });
 
 const Overlay = z.object({
@@ -91,6 +97,7 @@ const RawRegion = z.object({
 	pois: z.array(Poi),
 	layers: z.array(RawLayer),
 	overlays: z.array(Overlay),
+	events: z.string().nullable().default(null),
 });
 
 export const RawManifestSchema = z.object({

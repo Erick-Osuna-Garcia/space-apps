@@ -1,21 +1,21 @@
 import { Stars } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import type { KeyAxes } from "../controls/useKeyboard";
 import type { Palette } from "../lib/colormap";
 import { gridToLonLat } from "../lib/grid";
 import type { Zone } from "../lib/impact";
-import type { Segment } from "../lib/infrastructure";
+import type { Feature } from "../lib/infrastructure";
 import type { Layer, Region } from "../manifest";
 import type { ExplorerStore } from "../store";
 import { useFlight } from "./flight";
 import { Infrastructure } from "./Infrastructure";
 import { IsoCamera } from "./IsoCamera";
-import type { PaintModeValue } from "./layerMaterial";
+import { createLayerUniforms, type PaintModeValue } from "./layerMaterial";
 import { MotionArrows } from "./MotionArrows";
 import { PoiMarkers } from "./PoiMarkers";
 import { Ship } from "./Ship";
-import { Terrain } from "./Terrain";
+import { Terrain, type WaterData } from "./Terrain";
 import { ZoneMarkers } from "./ZoneMarkers";
 
 const PROBE_INTERVAL_S = 0.1;
@@ -72,6 +72,8 @@ export interface SceneProps {
 	dateIndex: number;
 	reducedMotion: boolean;
 	heightAt: (col: number, row: number) => number;
+	/** Altura sin hundimiento 3D: las cintas lo aplican en el shader. */
+	baseHeightAt: (col: number, row: number) => number;
 	paintMode: PaintModeValue;
 	field: Float32Array | null;
 	fieldLimit: number;
@@ -84,7 +86,7 @@ export interface SceneProps {
 	overlays: Array<{
 		id: string;
 		kind: "road" | "canal";
-		segments: Segment[];
+		features: Feature[];
 		flags: Uint8Array;
 	}>;
 	/** Campo este-oeste cuando esa capa está activa, para dibujar flechas. */
@@ -93,6 +95,8 @@ export interface SceneProps {
 	zoneLabels: React.RefObject<Map<string, HTMLElement>>;
 	deformScale: number;
 	deformCube: Float32Array | null;
+	water: WaterData | null;
+	waterMotion: boolean;
 	keys: React.RefObject<KeyAxes>;
 	labels: React.RefObject<Map<string, HTMLElement>>;
 	store: ExplorerStore;
@@ -100,6 +104,7 @@ export interface SceneProps {
 
 export function Scene(props: SceneProps) {
 	const { region } = props;
+	const uniforms = useMemo(createLayerUniforms, []);
 	return (
 		<>
 			<color attach="background" args={["#05070f"]} />
@@ -143,6 +148,9 @@ export function Scene(props: SceneProps) {
 				contour={props.contour}
 				deformScale={props.deformScale}
 				deformCube={props.deformCube}
+				uniforms={uniforms}
+				water={props.water}
+				waterMotion={props.waterMotion}
 			/>
 			<PoiMarkers
 				pois={region.pois}
@@ -152,10 +160,11 @@ export function Scene(props: SceneProps) {
 			{props.overlays.map((o) => (
 				<Infrastructure
 					key={o.id}
-					segments={o.segments}
+					features={o.features}
 					kind={o.kind}
 					flags={o.flags}
-					heightAt={props.heightAt}
+					baseHeightAt={props.baseHeightAt}
+					terrain={uniforms}
 				/>
 			))}
 			{props.arrows && (

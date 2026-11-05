@@ -1,6 +1,6 @@
 # Dancing with the SARs · Explorador NISAR
 
-Proyecto para el reto [Dancing with the SARs](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/) de NASA Space Apps 2026. Es un mapa 3D isométrico de Baja California donde pilotas una nave y ves, con datos de radar NISAR, cómo cambia el suelo. El caso central es el hundimiento alrededor del campo geotérmico de Cerro Prieto, en Mexicali.
+Proyecto para el reto [Dancing with the SARs](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/) de NASA Space Apps 2026. Es un mapa 3D isométrico del Valle de Mexicali donde pilotas una nave y ves, con datos de radar NISAR, cómo cambia el suelo. El caso central es el hundimiento alrededor del campo geotérmico de Cerro Prieto, en Mexicali.
 
 > **Estado de los datos:** las capas de `public/data` son **mediciones NISAR reales** (productos PROVISIONAL, oct-2025 a oct-2026), más datos de apoyo de Copernicus, ESA WorldCover, WorldPop y OpenStreetMap. Regenerarlas requiere una cuenta de NASA Earthdata: ver [`pipeline/README.md`](pipeline/README.md).
 
@@ -16,7 +16,7 @@ Otros comandos: `bun run build`, `bun run test` y `bun run check`.
 ## Cómo se usa
 
 - **Pilotar:** `W A S D` o flechas, `Shift` para turbo. Clic o tap en el terreno para volar ahí. Rueda o pellizco para zoom.
-- **Destinos:** vuela a un punto de interés o salta a otra región con warp.
+- **Destinos:** vuela a un punto de interés.
 - **Línea de tiempo:** elige una fecha o presiona play.
 
 ## Capas del mapa
@@ -25,12 +25,18 @@ Se elige una capa a la vez en el panel de capas, y cada una tiene su ayuda «?»
 
 | Tema | Capas |
 |---|---|
-| Movimiento | Acumulado, Velocidad, Zonas, Diferencial, Aceleración, Disturbios, Vertical y Este-oeste (con flechas) |
+| Movimiento | Acumulado, Velocidad, Zonas, Diferencial, Aceleración, Cambios bruscos en el terreno, Vertical y Este-oeste (con flechas) |
 | Superficie | Construcciones y suelo (HH), Vegetación (HV), Cambios |
 | Agua | Agua en superficie, Humedad del suelo |
 | Impacto | Pendiente, Laderas activas, Uso de suelo, Población |
 
-Sobre cualquier capa se pueden encender caminos y canales, con los tramos en zonas de cambio resaltados.
+Sobre cualquier capa se pueden encender caminos y canales, con ancho según el tipo de vía y los tramos en zonas de cambio resaltados. Las vías menores aparecen al acercarse.
+
+El agua se anima y reacciona a la nave y al toque. Su extensión viene de las mediciones de cada fecha; el oleaje y las ondas son decorativos y se apagan en Ajustes.
+
+## Eventos de impacto
+
+El botón Eventos lista lo que cambió, agrupado por tipo: zonas de hundimiento, cambios bruscos en el terreno, agua nueva y señal más fuerte. Al tocar un evento, la nave vuela al lugar y el mapa muestra su capa y fecha. Son cambios medidos: no indican su causa ni confirman daños.
 
 **Límites del dato:** hay un año de mediciones, con ±2–3 cm de ruido por fecha aun después de suavizar. El radar mide en línea de vista, así que Acumulado y Velocidad mezclan movimiento vertical y horizontal. Las capas señalan patrones y exposición; no evalúan daños ni riesgo. El «Hundimiento 3D» a ×10,000 es solo ilustrativo.
 

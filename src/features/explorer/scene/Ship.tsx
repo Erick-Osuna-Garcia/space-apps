@@ -4,7 +4,7 @@ import * as THREE from "three";
 import type { KeyAxes } from "../controls/useKeyboard";
 import { screenToWorld } from "../lib/grid";
 import { stepFlight, useFlight } from "./flight";
-import { HOVER_HEIGHT } from "./terrainGeometry";
+import { HOVER_HEIGHT, MAP_SCALE } from "./terrainGeometry";
 
 const HULL = "#e8edf2";
 const ACCENT = "#f59e0b";
@@ -13,7 +13,7 @@ const GLOW = "#67e8f9";
 /** Nave low-poly hecha con primitivas (sin assets externos). */
 function ShipModel() {
 	return (
-		<group scale={1.6}>
+		<group scale={1.6 / MAP_SCALE}>
 			{/* casco: proa hacia -z local */}
 			<mesh rotation={[-Math.PI / 2, 0, 0]} castShadow>
 				<coneGeometry args={[0.9, 3.6, 6]} />
@@ -104,7 +104,7 @@ export function Ship({ keys, reducedMotion }: ShipProps) {
 			b.rotation.z = flight.bank;
 			b.position.y = reducedMotion
 				? 0
-				: Math.sin(state.clock.elapsedTime * 2.2) * 0.35;
+				: (Math.sin(state.clock.elapsedTime * 2.2) * 0.35) / MAP_SCALE;
 		}
 	});
 
@@ -118,9 +118,9 @@ export function Ship({ keys, reducedMotion }: ShipProps) {
 				{/* resplandor del motor sobre el terreno: ayuda a ubicar la nave */}
 				<pointLight
 					color={GLOW}
-					intensity={30}
-					distance={22}
-					position={[0, -2, 2.5]}
+					intensity={30 / MAP_SCALE}
+					distance={22 / MAP_SCALE}
+					position={[0, -2 / MAP_SCALE, 2.5 / MAP_SCALE]}
 				/>
 			</group>
 		</>
@@ -170,9 +170,9 @@ function ShipTrail() {
 		acc.current = 0;
 		const tail = Math.sin(flight.heading);
 		const tailZ = Math.cos(flight.heading);
-		const x = flight.col + tail * 3;
+		const x = flight.col + (tail * 3) / MAP_SCALE;
 		const y = flight.y;
-		const z = flight.row + tailZ * 3;
+		const z = flight.row + (tailZ * 3) / MAP_SCALE;
 		if (reset) {
 			for (let i = 0; i < TRAIL_POINTS; i++) arr.set([x, y, z], i * 3);
 		} else {

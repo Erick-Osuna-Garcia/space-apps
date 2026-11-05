@@ -6,6 +6,7 @@ import {
 	sequential,
 } from "../lib/colormap";
 import { BAND_COLORS } from "../lib/impact";
+import { MAX_RIPPLES } from "../lib/water";
 
 export const NODATA_SENTINEL = -9999;
 
@@ -46,6 +47,16 @@ export interface LayerUniforms {
 	uDeformCube: { value: THREE.DataArrayTexture };
 	/** Tamaño de un texel de la grilla en coordenadas uv. */
 	uTexel: { value: THREE.Vector2 };
+	/** Máscara de agua por fecha: R permanente, G nueva. */
+	uWater: { value: THREE.DataArrayTexture };
+	uWaterOn: { value: number };
+	uWaterA: { value: number };
+	uWaterB: { value: number };
+	uWaterMix: { value: number };
+	/** Segundos de animación; se congela con el agua quieta. */
+	uTime: { value: number };
+	/** Ondas: col, fila y momento de nacimiento. */
+	uRipples: { value: THREE.Vector3[] };
 }
 
 function emptyCube() {
@@ -159,6 +170,23 @@ export function deformCubeTexture(
 	return tex;
 }
 
+/** Máscara de agua (dos bytes por celda) con filtro lineal, para bordes suaves. */
+export function waterTexture(
+	mask: Uint8Array,
+	width: number,
+	height: number,
+	depth: number,
+) {
+	const tex = new THREE.DataArrayTexture(mask, width, height, depth);
+	tex.format = THREE.RGFormat;
+	tex.type = THREE.UnsignedByteType;
+	tex.minFilter = THREE.LinearFilter;
+	tex.magFilter = THREE.LinearFilter;
+	tex.unpackAlignment = 1;
+	tex.needsUpdate = true;
+	return tex;
+}
+
 /** Colores por valor de banda, siempre 16 para el uniform del shader. */
 export function bandColors(colors: string[]) {
 	return Array.from(
@@ -194,6 +222,18 @@ export function createLayerUniforms(): LayerUniforms {
 		uDeform: { value: 0 },
 		uDeformCube: { value: emptyCube() },
 		uTexel: { value: new THREE.Vector2(1, 1) },
+		uWater: { value: waterTexture(new Uint8Array(2), 1, 1, 1) },
+		uWaterOn: { value: 0 },
+		uWaterA: { value: 0 },
+		uWaterB: { value: 0 },
+		uWaterMix: { value: 1 },
+		uTime: { value: 0 },
+		uRipples: {
+			value: Array.from(
+				{ length: MAX_RIPPLES },
+				() => new THREE.Vector3(0, 0, -1e4),
+			),
+		},
 	};
 }
 
@@ -255,7 +295,19 @@ uniform vec3 uBandColors[16];
 uniform vec2 uTexel;
 uniform float uDateA, uDateB, uMix, uOpacity, uLimit, uLayerOn, uMode, uFieldLimit, uFieldMin, uContour;
 uniform vec3 uNoData;
+uniform sampler2DArray uWater;
+uniform float uWaterOn, uWaterA, uWaterB, uWaterMix, uTime;
+uniform vec3 uRipples[${MAX_RIPPLES}];
 varying vec2 vGridUv;
+// oleaje: gradiente de cuatro ondas direccionales, en celdas
+vec2 waveGradient(vec2 p, float t) {
+  vec2 g = vec2(0.0);
+  vec2 d = vec2(0.86, 0.5);  g += d * cos(dot(p, d) * 1.7 + t * 1.1);
+  d = vec2(-0.45, 0.89);     g += d * cos(dot(p, d) * 2.6 - t * 1.4) * 0.7;
+  d = vec2(0.31, -0.95);     g += d * cos(dot(p, d) * 4.3 + t * 1.9) * 0.45;
+  d = vec2(-0.97, -0.24);    g += d * cos(dot(p, d) * 6.1 - t * 2.3) * 0.3;
+  return g;
+}
 int bandAt(vec2 uv) {
   return int(texture(uBands, uv).r * 255.0 + 0.5);
 }
@@ -276,12 +328,19 @@ bool onContour(vec2 uv, int band, vec2 w) {
 			.replace(
 				"#include <color_fragment>",
 				`#include <color_fragment>
+// la capa gana donde tiene dato; el agua va en el resto
+bool layerPainted = false;
+vec2 cellPos = vGridUv / uTexel;
+float cellPx = fwidth(cellPos.x);
 if (uLayerOn > 0.5 && uMode > 2.5) {
   vec2 lineWidth = fwidth(vGridUv / uTexel) * 1.5;
   int band = bandAt(vGridUv);
   if (band == 0) diffuseColor.rgb = mix(diffuseColor.rgb, uNoData, uOpacity);
   else {
-    if (band != 1) diffuseColor.rgb = mix(diffuseColor.rgb, uBandColors[band], uOpacity);
+    if (band != 1) {
+      diffuseColor.rgb = mix(diffuseColor.rgb, uBandColors[band], uOpacity);
+      layerPainted = true;
+    }
     if (uContour > 0.5 && onContour(vGridUv, band, lineWidth)) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), 0.9);
   }
 } else if (uLayerOn > 0.5) {
@@ -306,9 +365,65 @@ if (uLayerOn > 0.5 && uMode > 2.5) {
   else if (uMode > 1.5) layerColor = texture(uLutSeq, vec2(t, 0.5)).rgb;
   else layerColor = texture(uLut, vec2(t, 0.5)).rgb;
   diffuseColor.rgb = mix(diffuseColor.rgb, layerColor, uOpacity);
+  layerPainted = !nodata;
+}
+float waterAmount = 0.0;
+vec2 waterSlope = vec2(0.0);
+float waterGlint = 0.0;
+if (uWaterOn > 0.5 && !layerPainted) {
+  vec2 cover = mix(
+    texture(uWater, vec3(vGridUv, uWaterA)).rg,
+    texture(uWater, vec3(vGridUv, uWaterB)).rg,
+    uWaterMix
+  );
+  float permanent = smoothstep(0.3, 0.5, cover.r);
+  float fresh = smoothstep(0.3, 0.5, cover.g) * (1.0 - permanent);
+  // el agua nueva no está confirmada: más clara y dejando ver el terreno
+  waterAmount = permanent + fresh * 0.62;
+  if (waterAmount > 0.001) {
+    // de lejos las ondas serían más finas que un píxel
+    float detail = 1.0 - smoothstep(0.25, 1.2, cellPx);
+    vec2 slope = waveGradient(cellPos, uTime) * 0.1 * detail;
+    float foam = 0.0;
+    for (int i = 0; i < ${MAX_RIPPLES}; i++) {
+      vec3 ripple = uRipples[i];
+      float age = uTime - ripple.z;
+      if (age < 0.0 || age > 2.5) continue;
+      vec2 away = cellPos - ripple.xy;
+      float dist = length(away) + 1e-4;
+      float ring = exp(-pow((dist - age * 2.4) / 0.55, 2.0)) * (1.0 - age / 2.5);
+      slope += away / dist * ring * 0.9;
+      foam += ring;
+    }
+    waterSlope = slope;
+    vec3 deep = mix(vec3(0.014, 0.1, 0.2), vec3(0.03, 0.2, 0.3), 0.5 + dot(slope, vec2(1.5)));
+    vec3 tint = mix(deep, vec3(0.2, 0.56, 0.62), fresh / max(permanent + fresh, 1e-3));
+    tint += vec3(0.75) * clamp(foam, 0.0, 1.0) * 0.55;
+    diffuseColor.rgb = mix(diffuseColor.rgb, tint, waterAmount);
+    waterGlint = pow(clamp(0.5 + dot(slope, vec2(1.6, 1.1)), 0.0, 1.0), 28.0) * 0.3 * detail * waterAmount;
+  }
 }`,
+			)
+			.replace(
+				"#include <roughnessmap_fragment>",
+				`#include <roughnessmap_fragment>
+roughnessFactor = mix(roughnessFactor, 0.18, waterAmount);`,
+			)
+			.replace(
+				"#include <normal_fragment_maps>",
+				`#include <normal_fragment_maps>
+if (waterAmount > 0.001) {
+  // superficie plana aunque el terreno de abajo esté deformado
+  vec3 flatWater = normalize((viewMatrix * vec4(-waterSlope.x, 1.0, -waterSlope.y, 0.0)).xyz);
+  normal = normalize(mix(normal, flatWater, min(waterAmount * 1.4, 1.0)));
+}`,
+			)
+			.replace(
+				"#include <emissivemap_fragment>",
+				`#include <emissivemap_fragment>
+totalEmissiveRadiance += vec3(1.0, 0.95, 0.82) * waterGlint;`,
 			);
 	};
-	material.customProgramCacheKey = () => "terrain-layer-v6";
+	material.customProgramCacheKey = () => "terrain-layer-v7";
 	return material;
 }

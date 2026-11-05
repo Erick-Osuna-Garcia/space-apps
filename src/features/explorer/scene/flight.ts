@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { HOVER_HEIGHT } from "./terrainGeometry";
+import { HOVER_HEIGHT, MAP_SCALE } from "./terrainGeometry";
 
 /**
  * Estado mutable del vuelo, leído y escrito cada cuadro dentro de `useFrame`.
@@ -14,6 +14,8 @@ export interface Flight {
 	heading: number;
 	bank: number;
 	target: { col: number; row: number } | null;
+	/** Último toque en el mapa, a la espera de que el terreno lo atienda. */
+	tap: { col: number; row: number } | null;
 	/** La cámara debe saltar (sin damping) a la nave en el próximo cuadro. */
 	snap: boolean;
 	width: number;
@@ -32,6 +34,7 @@ export function createFlight(): Flight {
 		heading: 0,
 		bank: 0,
 		target: null,
+		tap: null,
 		snap: true,
 		width: 1,
 		height: 1,
@@ -58,11 +61,11 @@ export function teleport(f: Flight, col: number, row: number) {
 	f.snap = true;
 }
 
-export const MAX_SPEED = 38; // celdas/s
+export const MAX_SPEED = 38 / MAP_SCALE; // celdas/s
 export const BOOST = 2;
-export const ACCEL = 90;
+export const ACCEL = 90 / MAP_SCALE;
 export const FRICTION = 3.5;
-export const EDGE_MARGIN = 2;
+export const EDGE_MARGIN = 1;
 
 /** Un paso de integración del vuelo. `input` ya está en ejes de mundo (x, z). */
 export function stepFlight(

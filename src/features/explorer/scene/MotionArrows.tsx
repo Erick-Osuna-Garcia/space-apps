@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { arrowGrid, arrowStep } from "../lib/infrastructure";
 
-const LIFT = 5;
+const LIFT = 2;
 const MAX_ARROWS = 1500;
 
 interface MotionArrowsProps {
@@ -49,7 +49,7 @@ export function MotionArrows({
 			const size = 0.5 + Math.min(Math.abs(a.value) / limit, 1) * 1.5;
 			o.position.set(a.col, heightAt(a.col, a.row) + LIFT, a.row);
 			o.rotation.set(0, a.value >= 0 ? 0 : Math.PI, 0);
-			o.scale.setScalar(size * Math.max(1, step / 16));
+			o.scale.setScalar((size * step) / 24);
 			o.updateMatrix();
 			m.setMatrixAt(i, o.matrix);
 		});

@@ -30,9 +30,12 @@ export interface ExplorerState {
 	/** Superposiciones vectoriales apagadas por el usuario; por defecto están encendidas. */
 	overlays: Record<string, boolean>;
 	settingsOpen: boolean;
+	eventsOpen: boolean;
 	/** Hundimiento 3D exagerado (design.md D13). */
 	deform3d: boolean;
 	deformFactor: DeformFactor;
+	/** Oleaje y ondas; la extensión del agua cambia con la fecha de todos modos. */
+	waterMotion: boolean;
 	contextOpen: boolean;
 	creditsOpen: boolean;
 }
@@ -60,8 +63,10 @@ export const initialExplorerState = (regionId = "mexicali"): ExplorerState => ({
 	inspected: null,
 	overlays: {},
 	settingsOpen: false,
+	eventsOpen: false,
 	deform3d: true,
 	deformFactor: 10000,
+	waterMotion: true,
 	contextOpen: false,
 	creditsOpen: false,
 });
@@ -131,6 +136,9 @@ export function createExplorerStore(initial = initialExplorerState()) {
 		setInspected(inspected: { col: number; row: number } | null) {
 			setState((s) => ({ ...s, inspected }));
 		},
+		setEventsOpen(eventsOpen: boolean) {
+			setState((s) => ({ ...s, eventsOpen }));
+		},
 		setSettingsOpen(settingsOpen: boolean) {
 			setState((s) => ({ ...s, settingsOpen }));
 		},
@@ -142,6 +150,9 @@ export function createExplorerStore(initial = initialExplorerState()) {
 		},
 		setDeformFactor(deformFactor: DeformFactor) {
 			setState((s) => ({ ...s, deformFactor }));
+		},
+		setWaterMotion(waterMotion: boolean) {
+			setState((s) => ({ ...s, waterMotion }));
 		},
 		setWarping(warping: boolean) {
 			setState((s) => ({ ...s, warping }));

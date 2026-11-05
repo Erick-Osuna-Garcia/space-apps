@@ -120,4 +120,5 @@ export function arrowGrid(
 }
 
 /** Densidad de flechas según el zoom: de cerca, más flechas. */
-export const arrowStep = (zoom: number) => (zoom > 6 ? 12 : zoom > 3 ? 24 : 48);
+export const arrowStep = (zoom: number) =>
+	zoom > 18 ? 6 : zoom > 9 ? 12 : zoom > 4 ? 24 : 48;

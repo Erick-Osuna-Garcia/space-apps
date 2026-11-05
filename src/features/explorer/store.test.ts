@@ -63,6 +63,13 @@ describe("explorer store", () => {
 		expect(overlayOn(store.state, "roads")).toBe(true);
 	});
 
+	it("el agua se anima por defecto y se puede apagar", () => {
+		const store = createExplorerStore();
+		expect(store.state.waterMotion).toBe(true);
+		store.actions.setWaterMotion(false);
+		expect(store.state.waterMotion).toBe(false);
+	});
+
 	it("modos de análisis", () => {
 		const store = createExplorerStore();
 		expect(store.state).toMatchObject({
