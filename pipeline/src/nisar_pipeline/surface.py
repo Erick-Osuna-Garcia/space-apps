@@ -145,7 +145,13 @@ def read_sme2(f: h5py.File, grid: Grid) -> dict:
     return {"sm": sm, "x": x[cols], "y": y[rows], "epsg": epsg}
 
 
-READERS = {"GCOV": read_gcov, "SME2": read_sme2}
+def _read_opera(f: h5py.File, grid: Grid) -> dict:
+    from .opera import read_opera  # opera importa este módulo
+
+    return read_opera(f, grid)
+
+
+READERS = {"GCOV": read_gcov, "SME2": read_sme2, "OPERA": _read_opera}
 
 
 def _cache_path(cache_dir: Path, scene: Scene, grid: Grid) -> Path:

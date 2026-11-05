@@ -41,9 +41,8 @@ def test_run_synthetic_end_to_end(tmp_path):
 
     path = run(cfg, plan_synthetic, dem_loader=flat_dem)
     m = Manifest.model_validate_json(path.read_text())
-    mx, tj = m.regions
+    (mx,) = m.regions
     assert mx.layers[0].source == "synthetic"
-    assert tj.layers[0].source == "synthetic"
     raw = (tmp_path / mx.layers[0].path).read_bytes()
     cube = decode_cube(raw, len(mx.layers[0].dates), mx.height, mx.width)
     assert np.nanmin(cube) < -8

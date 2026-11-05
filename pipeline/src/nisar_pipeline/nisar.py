@@ -84,6 +84,7 @@ def build_series(
     cube[:, coherence_invalid(np.stack(cohs), layer.coherence_threshold)] = np.nan
     cube = reject_outliers(cube)
     if aux is not None:
+        aux["stable"] = stable
         aux["coherence"] = np.stack(cohs)
         aux["pair_dates"] = [sub.sec_date for sub in subsets]
     return cube
@@ -172,3 +173,30 @@ def decomposition(
     e2, u2 = stack_geometry(cache, disc.products[-1], grid, opener)
     up, east = decompose(velocity, e1, u1, v2, e2, u2)
     return up, east, primary_products + [p.id for p in disc.products]
+
+
+def extend_with_history(
+    cfg: PipelineConfig, region: RegionConfig, layer: LayerConfig, grid: Grid,
+    nisar: np.ndarray, nisar_dates: list[date], stable: np.ndarray,
+) -> tuple[np.ndarray, list[date], date, list[str]]:
+    """Antepone la historia de Sentinel-1 a la serie NISAR."""
+    from . import opera
+    from .surface import fetch_scenes
+
+    items = opera.select_items(
+        opera.search_items(region, layer.history), layer.history.min_gap_days
+    )
+    subs = fetch_scenes(
+        [opera.to_scene(i) for i in items], grid, cfg.cache_dir / region.id / "opera", "OPERA"
+    )
+    ref = reference_mask(grid, layer.reference_bbox)
+    cube, dates = opera.build_history(items, subs, grid, ref, stable)
+    cube = reject_outliers(smooth_series(cube, 3), max_diff_cm=15.0, max_abs_cm=150.0)
+    a, b = opera.overlap_rates(cube, dates, nisar, nisar_dates)
+    both = np.isfinite(a) & np.isfinite(b)
+    log.info(
+        "Comparación Sentinel-1 vs NISAR en el periodo común: r=%.2f, diferencia mediana %.1f cm/año",
+        float(np.corrcoef(a[both], b[both])[0, 1]), float(np.median(a[both] - b[both])),
+    )
+    merged, merged_dates, junction = opera.merge_with_nisar(cube, dates, nisar, nisar_dates)
+    return merged, merged_dates, junction, [i.id for i in items]

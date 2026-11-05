@@ -100,6 +100,7 @@ def write_manifest(out_dir: Path, manifest: Manifest) -> Path:
             r.terrain.path,
             *(layer.path for layer in r.layers),
             *(o.path for o in r.overlays),
+            *([r.events] if r.events else []),
         ]
         if not (out_dir / p).is_file()
     ]

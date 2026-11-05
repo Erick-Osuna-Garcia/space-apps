@@ -52,6 +52,13 @@ class LayerClass(_Model):
     color: str
 
 
+class Segment(_Model):
+    """Tramo de fechas de una capa con varias fuentes: hasta `until` (incluida) viene de `source`."""
+
+    until: str
+    source: Literal["nisar", "sentinel-1"]
+
+
 class Layer(_Model):
     id: str
     type: str  # "los-displacement" o "raster"; la web ignora tipos desconocidos
@@ -72,6 +79,7 @@ class Layer(_Model):
     source: Literal["nisar", "sentinel-1", "synthetic", "derived", "esa-worldcover", "worldpop"]
     products: list[str]
     credits: list[Credit]
+    segments: list[Segment] = []
 
 
 class Overlay(_Model):
@@ -95,6 +103,7 @@ class Region(_Model):
     pois: list[PoiOut]
     layers: list[Layer]
     overlays: list[Overlay] = []
+    events: str | None = None
 
 
 class Manifest(_Model):
@@ -118,6 +127,13 @@ NISAR_CREDIT = Credit(
     name="NASA-ISRO SAR (NISAR) L2 GUNW",
     attribution="NISAR data courtesy of NASA/JPL-Caltech and ISRO, distributed by the ASF DAAC",
     url="https://search.asf.alaska.edu/",
+)
+
+OPERA_CREDIT = Credit(
+    name="OPERA DISP-S1 (Sentinel-1)",
+    attribution="OPERA surface displacement from Sentinel-1, NASA/JPL-Caltech, distributed by the "
+    "ASF DAAC. Contains modified Copernicus Sentinel data.",
+    url="https://www.jpl.nasa.gov/go/opera/",
 )
 
 SYNTHETIC_CREDIT = Credit(

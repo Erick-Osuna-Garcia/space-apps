@@ -12,9 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_repo_config_is_valid():
     cfg = load_config(ROOT / "regions.yaml")
     ids = {r.id: r for r in cfg.regions}
-    assert set(ids) == {"mexicali", "tijuana"}
+    assert set(ids) == {"mexicali"}
     assert [layer.id for layer in ids["mexicali"].layers] == ["subsidence"]
-    assert [layer.id for layer in ids["tijuana"].layers] == ["subsidence"]
     assert cfg.output_dir == (ROOT.parent / "public" / "data").resolve()
 
 
@@ -30,7 +29,7 @@ def _base():
 
 def test_rejects_poi_outside_bbox(tmp_path):
     data = _base()
-    data["regions"][1]["pois"][0]["lon"] = -100
+    data["regions"][0]["pois"][0]["lon"] = -100
     with pytest.raises(ValidationError, match="fuera del bbox"):
         load_config(_write(tmp_path, data))
 
@@ -51,6 +50,6 @@ def test_rejects_unknown_layer_type(tmp_path):
 
 def test_rejects_duplicate_region_ids(tmp_path):
     data = _base()
-    data["regions"][1]["id"] = "mexicali"
+    data["regions"].append(data["regions"][0])
     with pytest.raises(ValidationError, match="duplicados"):
         load_config(_write(tmp_path, data))

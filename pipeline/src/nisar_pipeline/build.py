@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 
+from . import events as ev
 from . import manifest as mf
 from .config import LayerConfig, PipelineConfig, RegionConfig
 from .dem import load_dem
@@ -36,6 +37,16 @@ LAYER_TEXT = {
         "fecha. Valores negativos = el suelo se aleja del satélite (hundimiento).",
     ),
 }
+
+
+EVENT_SPECS = [
+    ("water", 3, "water", ev.MIN_WATER_KM2, "Agua nueva en {area:.0f} km²",
+     "La señal del radar cayó con fuerza respecto a lo normal aquí."),
+    ("disturbance", 2, "disturbance", ev.MIN_DISTURBANCE_KM2, "Cambio brusco en {area:.0f} km²",
+     "El radar perdió coherencia entre dos pasadas: algo cambió aquí."),
+    ("change", 2, "change", ev.MIN_CHANGE_KM2, "Señal más fuerte en {area:.0f} km²",
+     "La superficie devuelve más señal que al inicio de la serie."),
+]
 
 
 @dataclass
@@ -86,6 +97,7 @@ def build_region(
     layers_out: list[mf.Layer] = []
     velocity = None
     aux: dict = {}
+    event_list: list[ev.Event] = []
     for plan in plans:
         cube = plan.build(grid)
         if plan.config.type == "los-displacement":
@@ -94,8 +106,25 @@ def build_region(
         expected = (len(plan.dates), grid.height, grid.width)
         if cube.shape != expected:
             raise ValueError(f"{region.id}/{plan.config.id}: cubo {cube.shape} != {expected}")
+        dates, segments, products = plan.dates, [], plan.products
+        credits = plan.credits
+        if plan.config.history and "stable" in plan.aux:
+            from .nisar import extend_with_history  # nisar importa este módulo
+
+            cube, dates, junction, opera_ids = extend_with_history(
+                cfg, region, plan.config, grid, cube, plan.dates, plan.aux["stable"]
+            )
+            segments = [
+                mf.Segment(until=junction.isoformat(), source="sentinel-1"),
+                mf.Segment(until=dates[-1].isoformat(), source="nisar"),
+            ]
+            products = products + opera_ids
+            credits = [*credits, mf.OPERA_CREDIT]
         path = f"{region.id}/{plan.config.id}/cube.bin"
         total += write_bin(out_dir / path, encode_cube(cube))
+        event_list += ev.subsidence_events(
+            cube, dates, region, grid, "sentinel-1 + nisar" if segments else plan.source
+        )
         valid = cube[np.isfinite(cube)]
         name, description = LAYER_TEXT[plan.config.type]
         layers_out.append(
@@ -108,20 +137,35 @@ def build_region(
                 units="cm",
                 path=path,
                 scale=0.1,
-                dates=[d.isoformat() for d in plan.dates],
+                dates=[d.isoformat() for d in dates],
                 # percentiles: unos pocos píxeles extremos no deben aplanar la escala de color
                 valueRange=tuple(round(float(v), 2) for v in np.percentile(valid, [0.1, 99.9]))
                 if valid.size
                 else (0.0, 0.0),
                 source=plan.source,
-                products=plan.products,
-                credits=plan.credits,
+                products=products,
+                credits=credits,
+                segments=segments,
             )
         )
     extra_layers, overlays = build_extras(cfg, region, grid, dem, velocity, out_dir, aux)
     for extra in extra_layers:
         total += write_bin(out_dir / extra.layer.path, extra.data)
         layers_out.append(extra.layer)
+    by_id = {e.layer.id: e for e in extra_layers}
+    for lid, value, kind, min_km2, title, detail in EVENT_SPECS:
+        extra = by_id.get(lid)
+        if extra:
+            event_list += ev.class_events(
+                extra.data, value, extra.layer.dates, region, grid,
+                kind=kind, min_km2=min_km2, title=title, detail=detail,
+            )
+    events_path = None
+    if event_list:
+        events_path = f"{region.id}/events.json"
+        (out_dir / events_path).write_text(
+            json.dumps(ev.to_json(event_list), ensure_ascii=False, indent=1), encoding="utf-8"
+        )
     check_budget(region.id, total, budget)
     log.info("%s: %.2f MB de assets", region.id, total / 1e6)
 
@@ -150,6 +194,7 @@ def build_region(
         pois=pois,
         layers=layers_out,
         overlays=overlays,
+        events=events_path,
     )
 
 

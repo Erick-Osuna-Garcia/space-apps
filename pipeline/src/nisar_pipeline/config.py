@@ -36,6 +36,13 @@ class StackConfig(BaseModel):
     frame: int
 
 
+class HistoryConfig(BaseModel):
+    """Historia anterior a NISAR con OPERA DISP-S1 (Sentinel-1)."""
+
+    frame: int
+    min_gap_days: int = Field(default=75, gt=0)
+
+
 class LayerConfig(BaseModel):
     id: str = Field(pattern=r"^[a-z0-9-]+$")
     type: Literal["los-displacement"]
@@ -48,6 +55,7 @@ class LayerConfig(BaseModel):
     stack: StackConfig | None = None
     # Stack de la otra órbita, para separar vertical y este-oeste.
     secondary_stack: StackConfig | None = None
+    history: HistoryConfig | None = None
     # Radio alrededor del centro que no se usa al quitar la rampa, para no absorber la señal.
     deramp_exclude_km: float = Field(default=0, ge=0)
 

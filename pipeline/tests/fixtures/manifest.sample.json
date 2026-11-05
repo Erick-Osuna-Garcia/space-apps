@@ -98,7 +98,17 @@
           "paint": "diverging",
           "palette": "vik",
           "classes": [],
-          "referenceDate": null
+          "referenceDate": null,
+          "segments": [
+            {
+              "until": "2025-10-01",
+              "source": "sentinel-1"
+            },
+            {
+              "until": "2025-10-25",
+              "source": "nisar"
+            }
+          ]
         },
         {
           "id": "crops",
@@ -126,7 +136,8 @@
           "paint": "diverging",
           "palette": "vik",
           "classes": [],
-          "referenceDate": null
+          "referenceDate": null,
+          "segments": []
         },
         {
           "id": "landcover",
@@ -156,7 +167,8 @@
           ],
           "source": "esa-worldcover",
           "products": [],
-          "credits": []
+          "credits": [],
+          "segments": []
         }
       ],
       "overlays": [
@@ -167,7 +179,8 @@
           "path": "mexicali/roads.json",
           "credits": []
         }
-      ]
+      ],
+      "events": null
     },
     {
       "id": "tijuana",
@@ -227,7 +240,8 @@
         }
       ],
       "layers": [],
-      "overlays": []
+      "overlays": [],
+      "events": null
     }
   ]
 }

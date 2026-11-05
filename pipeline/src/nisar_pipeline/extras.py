@@ -370,11 +370,11 @@ def build_extras(
 
     if "disturbance" in wanted and aux and "coherence" in aux:
         layers.append(_classes(
-            region.id, "disturbance", "Disturbios",
+            region.id, "disturbance", "Cambios bruscos en el terreno",
             "Dónde el radar perdió coherencia respecto a lo normal en ese punto: algo cambió entre "
             "dos pasadas, como obras, cosecha o inundación.",
             "movement", S.disturbance_classes(aux["coherence"]),
-            [(2, "Disturbio", "#ff6f00")], aux["pair_dates"], aux["products"],
+            [(2, "Cambio brusco", "#ff6f00")], aux["pair_dates"], aux["products"],
         ))
 
     jobs: dict[str, Callable[[], list[ExtraLayer]]] = {}
