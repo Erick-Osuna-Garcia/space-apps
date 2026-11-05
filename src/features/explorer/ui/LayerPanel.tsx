@@ -1,8 +1,6 @@
 import { cn } from "cn";
-import { Layers, Mountain } from "lucide-react";
+import { Layers } from "lucide-react";
 import { useState } from "react";
-import { Slider } from "#/components/ui/slider";
-import { Switch } from "#/components/ui/switch";
 import { type CatalogItem, THEMES, type Theme } from "../lib/catalog";
 import {
 	PALETTES,
@@ -13,7 +11,6 @@ import {
 } from "../lib/colormap";
 import { BAND_COLORS, BAND_NAMES, Band } from "../lib/impact";
 import type { Layer } from "../manifest";
-import { DEFORM_FACTORS, type DeformFactor } from "../store";
 import { InfoHint } from "./InfoHint";
 import { Panel, PanelTitle } from "./Panel";
 
@@ -57,25 +54,11 @@ interface LayerPanelProps {
 	/** Capa de desplazamiento, si la región la tiene. */
 	displacement: Layer | null;
 	visible: boolean;
-	opacity: number;
-	onVisible: (visible: boolean) => void;
-	onOpacity: (opacity: number) => void;
 	loading: boolean;
 	failed: boolean;
 	/** Límite de color del campo de la vista activa. */
 	fieldLimit: number;
 	zoneCount: number;
-	deform3d: boolean;
-	deformFactor: DeformFactor;
-	onDeform3d: (on: boolean) => void;
-	onDeformFactor: (factor: DeformFactor) => void;
-	overlays: Array<{
-		id: string;
-		name: string;
-		on: boolean;
-		km: number | null;
-	}>;
-	onOverlay: (id: string, on: boolean) => void;
 }
 
 export function LayerPanel({
@@ -84,19 +67,10 @@ export function LayerPanel({
 	onSelect,
 	displacement,
 	visible,
-	opacity,
-	onVisible,
-	onOpacity,
 	loading,
 	failed,
 	fieldLimit,
 	zoneCount,
-	deform3d,
-	deformFactor,
-	onDeform3d,
-	onDeformFactor,
-	overlays,
-	onOverlay,
 }: LayerPanelProps) {
 	const themes = THEMES.filter((t) => catalog.some((i) => i.theme === t.id));
 	const [pickedTheme, setTheme] = useState<Theme | null>(null);
@@ -112,21 +86,12 @@ export function LayerPanel({
 				<PanelTitle className="flex items-center gap-1.5">
 					<Layers className="size-3.5" aria-hidden /> Capas
 				</PanelTitle>
-				{catalog.length > 0 && (
-					<span className="flex items-center gap-1">
-						{help && (
-							<InfoHint label={help.title}>
-								{help.text.map((t) => (
-									<p key={t}>{t}</p>
-								))}
-							</InfoHint>
-						)}
-						<Switch
-							aria-label="Mostrar capa"
-							checked={visible}
-							onCheckedChange={onVisible}
-						/>
-					</span>
+				{catalog.length > 0 && help && (
+					<InfoHint label={help.title}>
+						{help.text.map((t) => (
+							<p key={t}>{t}</p>
+						))}
+					</InfoHint>
 				)}
 			</div>
 			{catalog.length === 0 ? (
@@ -174,106 +139,12 @@ export function LayerPanel({
 					)}
 					{visible && active && (
 						<div className="mt-2 rounded-xl bg-white/5 px-3 py-2.5">
-							<div className="flex items-center gap-3">
-								<span className="text-slate-400 text-xs">Opacidad</span>
-								<Slider
-									aria-label={`Opacidad de ${active.name}`}
-									min={0}
-									max={1}
-									step={0.05}
-									value={[opacity]}
-									onValueChange={([v]) => onOpacity(v)}
-								/>
-							</div>
 							<Legend
 								item={active}
 								displacement={displacement}
 								fieldLimit={fieldLimit}
 								zoneCount={zoneCount}
 							/>
-						</div>
-					)}
-					{overlays.length > 0 && (
-						<div className="mt-3 space-y-2 border-white/10 border-t px-1 pt-3">
-							<div className="flex items-center justify-between">
-								<span className="text-slate-400 text-xs">Infraestructura</span>
-								<InfoHint label="Infraestructura">
-									<p>
-										Caminos y canales de OpenStreetMap. En rojo, los tramos
-										dentro de una zona de hundimiento o donde el terreno se
-										dobla más.
-									</p>
-									<p>
-										Muestra qué está encima de una zona de cambio; no confirma
-										daños.
-									</p>
-								</InfoHint>
-							</div>
-							{overlays.map((o) => (
-								<div
-									key={o.id}
-									className="flex items-center justify-between gap-3"
-								>
-									<label
-										htmlFor={`overlay-${o.id}`}
-										className="font-semibold text-slate-100 text-sm"
-									>
-										{o.name}
-										{o.on && o.km !== null && (
-											<span className="ml-1.5 font-normal text-red-300 text-xs tabular-nums">
-												{o.km.toFixed(1)} km en zona
-											</span>
-										)}
-									</label>
-									<Switch
-										id={`overlay-${o.id}`}
-										checked={o.on}
-										onCheckedChange={(v) => onOverlay(o.id, v)}
-									/>
-								</div>
-							))}
-						</div>
-					)}
-					{displacement && (
-						<div className="mt-3 border-white/10 border-t px-1 pt-3">
-							<div className="flex items-center justify-between gap-3">
-								<label
-									htmlFor="deform-3d"
-									className="flex items-center gap-1.5 font-semibold text-slate-100 text-sm"
-								>
-									<Mountain className="size-3.5" aria-hidden />
-									Hundimiento 3D
-								</label>
-								<span className="flex items-center gap-1">
-									<InfoHint label="Hundimiento 3D">
-										<p>
-											Baja el terreno según el dato para que se vea la forma del
-											hundimiento.
-										</p>
-										<p>
-											Los centímetros reales serían invisibles a esta escala,
-											por eso se multiplican miles de veces. Las alturas de este
-											modo no son reales.
-										</p>
-									</InfoHint>
-									<Switch
-										id="deform-3d"
-										checked={deform3d}
-										onCheckedChange={onDeform3d}
-									/>
-								</span>
-							</div>
-							{deform3d && (
-								<Segmented
-									label="Exageración"
-									value={deformFactor}
-									onChange={onDeformFactor}
-									options={DEFORM_FACTORS.map((f) => ({
-										value: f,
-										label: `×${f.toLocaleString("es-MX")}`,
-									}))}
-								/>
-							)}
 						</div>
 					)}
 				</>

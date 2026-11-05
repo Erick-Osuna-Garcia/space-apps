@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createExplorerStore, layerUi } from "./store";
+import { createExplorerStore, layerUi, overlayOn } from "./store";
 
 describe("explorer store", () => {
 	it("cambiar de región reinicia la línea de tiempo y vuelve a reproducir", () => {
@@ -54,24 +54,30 @@ describe("explorer store", () => {
 		expect(store.state.inspected).toBeNull();
 	});
 
+	it("caminos y canales están encendidos hasta que se apagan", () => {
+		const store = createExplorerStore();
+		expect(overlayOn(store.state, "roads")).toBe(true);
+		store.actions.setOverlay("roads", false);
+		expect(overlayOn(store.state, "roads")).toBe(false);
+		store.actions.setOverlay("roads", true);
+		expect(overlayOn(store.state, "roads")).toBe(true);
+	});
+
 	it("modos de análisis", () => {
 		const store = createExplorerStore();
 		expect(store.state).toMatchObject({
 			mapView: "cumulative",
-			statsThreshold: 5,
 			deform3d: true,
 			deformFactor: 10000,
 			playing: true,
 		});
 		store.actions.setMapView("zones");
-		store.actions.setStatsThreshold(10);
 		store.actions.setDeform3d(false);
 		store.actions.setDeformFactor(5000);
 		store.actions.setRegion("tijuana");
 		// los modos de análisis se conservan al cambiar de región
 		expect(store.state).toMatchObject({
 			mapView: "zones",
-			statsThreshold: 10,
 			deform3d: false,
 			deformFactor: 5000,
 		});

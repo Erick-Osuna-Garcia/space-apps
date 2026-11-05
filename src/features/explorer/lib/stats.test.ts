@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dateStats, fillForDisplay, robustLimit, velocityField } from "./stats";
+import { fillForDisplay, robustLimit, velocityField } from "./stats";
 
 // 2x2, 3 fechas a 1 año de distancia; scale 0.1 (mm -> cm)
 const info = {
@@ -41,25 +41,6 @@ describe("robustLimit", () => {
 		const vals = Float32Array.from([1, -2, 3, Number.NaN, -100]);
 		expect(robustLimit(vals, 0.5)).toBe(3);
 		expect(robustLimit(Float32Array.from([Number.NaN]))).toBe(1);
-	});
-});
-
-describe("dateStats", () => {
-	const v = velocityField(cube, info);
-
-	it("máximo, área y velocidad media a la fecha", () => {
-		const s = dateStats(cube, info, v, 2, 5, 1000); // celdas de 1 km
-		expect(s.maxSubsidence).toBeCloseTo(-20);
-		expect(s.maxCell).toEqual({ col: 0.5, row: 0.5 });
-		expect(s.areaKm2).toBe(2); // p0 (-20) y p2 (-6)
-		expect(s.meanVelocity).toBeCloseTo((-10 + -3) / 2, 1);
-	});
-
-	it("sin área sobre el umbral", () => {
-		const s = dateStats(cube, info, v, 0, 5, 1000);
-		expect(s.areaKm2).toBe(0);
-		expect(s.meanVelocity).toBeNull();
-		expect(s.maxSubsidence).toBeNull(); // nada negativo en t0
 	});
 });
 

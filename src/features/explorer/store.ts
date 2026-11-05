@@ -10,6 +10,9 @@ export interface ProbeReading {
 	row: number;
 	lon: number;
 	lat: number;
+	/** Velocidad de la nave, en celdas por segundo. */
+	vx?: number;
+	vz?: number;
 }
 
 export interface ExplorerState {
@@ -24,10 +27,9 @@ export interface ExplorerState {
 	mapView: MapView;
 	/** Punto tocado en el mapa para el inspector, en coordenadas de grilla. */
 	inspected: { col: number; row: number } | null;
-	/** Superposiciones vectoriales encendidas, por id. */
+	/** Superposiciones vectoriales apagadas por el usuario; por defecto están encendidas. */
 	overlays: Record<string, boolean>;
-	/** Umbral de hundimiento (cm) para las estadísticas. */
-	statsThreshold: StatsThreshold;
+	settingsOpen: boolean;
 	/** Hundimiento 3D exagerado (design.md D13). */
 	deform3d: boolean;
 	deformFactor: DeformFactor;
@@ -42,8 +44,6 @@ export type MapView =
 	| "differential"
 	| "acceleration"
 	| `layer:${string}`;
-export const STATS_THRESHOLDS = [2, 5, 10] as const;
-export type StatsThreshold = (typeof STATS_THRESHOLDS)[number];
 export const DEFORM_FACTORS = [2000, 5000, 10000] as const;
 export type DeformFactor = (typeof DEFORM_FACTORS)[number];
 
@@ -59,7 +59,7 @@ export const initialExplorerState = (regionId = "mexicali"): ExplorerState => ({
 	mapView: "cumulative",
 	inspected: null,
 	overlays: {},
-	statsThreshold: 5,
+	settingsOpen: false,
 	deform3d: true,
 	deformFactor: 10000,
 	contextOpen: false,
@@ -131,11 +131,11 @@ export function createExplorerStore(initial = initialExplorerState()) {
 		setInspected(inspected: { col: number; row: number } | null) {
 			setState((s) => ({ ...s, inspected }));
 		},
+		setSettingsOpen(settingsOpen: boolean) {
+			setState((s) => ({ ...s, settingsOpen }));
+		},
 		setOverlay(id: string, on: boolean) {
 			setState((s) => ({ ...s, overlays: { ...s.overlays, [id]: on } }));
-		},
-		setStatsThreshold(statsThreshold: StatsThreshold) {
-			setState((s) => ({ ...s, statsThreshold }));
 		},
 		setDeform3d(deform3d: boolean) {
 			setState((s) => ({ ...s, deform3d }));
@@ -158,6 +158,9 @@ export function createExplorerStore(initial = initialExplorerState()) {
 export type ExplorerStore = ReturnType<typeof createExplorerStore>;
 
 export const explorerStore = createExplorerStore();
+
+export const overlayOn = (state: ExplorerState, id: string) =>
+	state.overlays[id] !== false;
 
 export function layerUi(state: ExplorerState, layerId: string): LayerUiState {
 	return state.layers[layerKey(state.regionId, layerId)] ?? DEFAULT_LAYER;

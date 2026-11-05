@@ -57,63 +57,6 @@ export function robustLimit(values: Float32Array, q = 0.99): number {
 	);
 }
 
-export interface DateStats {
-	/** Desplazamiento mínimo (más negativo = mayor hundimiento), cm. */
-	maxSubsidence: number | null;
-	/** Celda (col, row) del centro del píxel con mayor hundimiento. */
-	maxCell: { col: number; row: number } | null;
-	/** Área con desplazamiento <= -umbral, km². */
-	areaKm2: number;
-	/** Velocidad media (cm/año) dentro de esa área; null si el área es 0. */
-	meanVelocity: number | null;
-}
-
-export function dateStats(
-	cube: Int16Array,
-	info: CubeInfo,
-	velocity: Float32Array,
-	dateIndex: number,
-	thresholdCm: number,
-	cellSizeM: number,
-): DateStats {
-	const plane = info.width * info.height;
-	const base = Math.min(Math.max(dateIndex, 0), info.dates.length - 1) * plane;
-	const limitRaw = -thresholdCm / info.scale;
-	let minRaw = Number.POSITIVE_INFINITY;
-	let minIdx = -1;
-	let count = 0;
-	let vSum = 0;
-	let vCount = 0;
-	for (let p = 0; p < plane; p++) {
-		const raw = cube[base + p];
-		if (raw === info.nodata) continue;
-		if (raw < minRaw) {
-			minRaw = raw;
-			minIdx = p;
-		}
-		if (raw <= limitRaw) {
-			count++;
-			const v = velocity[p];
-			if (Number.isFinite(v)) {
-				vSum += v;
-				vCount++;
-			}
-		}
-	}
-	const hasMin = minIdx >= 0 && minRaw < 0;
-	return {
-		maxSubsidence: hasMin ? minRaw * info.scale : null,
-		maxCell: hasMin
-			? {
-					col: (minIdx % info.width) + 0.5,
-					row: Math.floor(minIdx / info.width) + 0.5,
-				}
-			: null,
-		areaKm2: (count * cellSizeM * cellSizeM) / 1e6,
-		meanVelocity: vCount > 0 ? vSum / vCount : null,
-	};
-}
-
 /**
  * Cubo (cm) para la GEOMETRÍA del hundimiento 3D: los huecos sin dato se rellenan con el
  * promedio de vecinos válidos por dilación iterativa (`passes` celdas de alcance), para no

@@ -50,18 +50,13 @@ import {
 	nearestSegment,
 	toSegments,
 } from "./lib/infrastructure";
-import {
-	dateStats,
-	fillForDisplay,
-	robustLimit,
-	velocityField,
-} from "./lib/stats";
+import { fillForDisplay, robustLimit, velocityField } from "./lib/stats";
 import type { Overlay, Poi, Region } from "./manifest";
 import { createFlight, FlightContext, teleport } from "./scene/flight";
 import { PaintMode } from "./scene/layerMaterial";
 import { Scene } from "./scene/Scene";
 import { DEFAULT_EXAGGERATION, verticalScale } from "./scene/terrainGeometry";
-import { explorerStore, layerUi, type MapView } from "./store";
+import { explorerStore, layerUi, type MapView, overlayOn } from "./store";
 import { DateTitle } from "./ui/DateTitle";
 import { Inspector, type InspectorRow } from "./ui/Inspector";
 import { LayerPanel } from "./ui/LayerPanel";
@@ -70,15 +65,14 @@ import {
 	ControlsHint,
 	CreditsContent,
 	DataNotice,
-	DeformBadge,
 	NoWebGL,
 	SidePanel,
 	WarpOverlay,
 } from "./ui/Overlays";
 import { PoiLabels } from "./ui/PoiLabels";
 import { PoiList } from "./ui/PoiList";
-import { Probe } from "./ui/Probe";
-import { StatsPanel } from "./ui/StatsPanel";
+import { SettingsDialog } from "./ui/SettingsDialog";
+import { ShipStatus } from "./ui/ShipStatus";
 import { Timeline } from "./ui/Timeline";
 import { TopBar } from "./ui/TopBar";
 import { ZoneLabels } from "./ui/ZoneLabels";
@@ -171,7 +165,7 @@ function ExplorerScene() {
 
 	const activeCube = activeLayer ? (cube.data ?? null) : null;
 
-	// Análisis de la capa (design.md D12): velocidad una vez por cubo, estadísticas por fecha.
+	// Análisis de la capa: velocidad una vez por cubo.
 	const velocity = useMemo(
 		() =>
 			region && timelineLayer && cube.data
@@ -189,34 +183,6 @@ function ExplorerScene() {
 		() => (velocity ? robustLimit(velocity) : 1),
 		[velocity],
 	);
-	const stats = useMemo(
-		() =>
-			region && timelineLayer && activeCube && velocity
-				? dateStats(
-						activeCube,
-						{
-							width: region.width,
-							height: region.height,
-							dates: timelineLayer.dates,
-							scale: timelineLayer.scale,
-							nodata: timelineLayer.nodata,
-						},
-						velocity,
-						dispIndex,
-						state.statsThreshold,
-						region.cellSizeM,
-					)
-				: null,
-		[
-			region,
-			timelineLayer,
-			activeCube,
-			velocity,
-			dispIndex,
-			state.statsThreshold,
-		],
-	);
-
 	// Vistas de impacto: lo que pinta el mapa según el selector.
 	const impact = useMemo(
 		() =>
@@ -406,10 +372,9 @@ function ExplorerScene() {
 	const overlayData = useQueries({
 		queries: overlayList.map((o) => ({
 			...overlayQuery(o),
-			enabled: Boolean(state.overlays[o.id]) || Boolean(state.inspected),
 		})),
 	});
-	const overlayBands = overlayList.some((o) => state.overlays[o.id])
+	const overlayBands = overlayList.some((o) => overlayOn(state, o.id))
 		? (impact?.zones(dispIndex).bands ?? null)
 		: null;
 	const overlayDiff = overlayBands
@@ -597,7 +562,7 @@ function ExplorerScene() {
 								bandPalette={raster ? bandPalette : BAND_COLORS}
 								contour={!raster}
 								onPick={(col, row) => store.actions.setInspected({ col, row })}
-								overlays={overlayModels.filter((o) => state.overlays[o.id])}
+								overlays={overlayModels.filter((o) => overlayOn(state, o.id))}
 								arrows={raster?.id === "east-west" ? rasterField : null}
 								zones={zones}
 								zoneLabels={zoneLabels}
@@ -638,6 +603,27 @@ function ExplorerScene() {
 					)}
 				</div>
 
+				<SettingsDialog
+					open={state.settingsOpen}
+					onOpenChange={store.actions.setSettingsOpen}
+					layerVisible={mainUi.visible}
+					onLayerVisible={(v) => store.actions.setLayerVisible(MAIN_LAYER, v)}
+					opacity={mainUi.opacity}
+					onOpacity={(v) => store.actions.setLayerOpacity(MAIN_LAYER, v)}
+					hasDisplacement={Boolean(timelineLayer)}
+					deform3d={state.deform3d}
+					onDeform3d={store.actions.setDeform3d}
+					deformFactor={state.deformFactor}
+					onDeformFactor={store.actions.setDeformFactor}
+					overlays={overlayModels.map((o) => ({
+						id: o.id,
+						name: o.name,
+						on: overlayOn(state, o.id),
+						km: overlayBands ? o.km : null,
+					}))}
+					onOverlay={store.actions.setOverlay}
+				/>
+
 				<WarpOverlay active={state.warping} reducedMotion={reducedMotion} />
 
 				{/* HUD */}
@@ -651,11 +637,9 @@ function ExplorerScene() {
 						onOpenCredits={() =>
 							store.actions.setCreditsOpen(!state.creditsOpen)
 						}
+						onOpenSettings={() => store.actions.setSettingsOpen(true)}
 						notice={<DataNotice layer={raster ?? activeLayer} />}
 					/>
-					<div className="flex flex-wrap justify-center gap-2">
-						{deformScale > 0 && <DeformBadge factor={state.deformFactor} />}
-					</div>
 					{compact && (
 						<PoiList
 							manifest={manifest.data}
@@ -673,18 +657,6 @@ function ExplorerScene() {
 									activeRegionId={region.id}
 									onSelect={goTo}
 									compact={false}
-								/>
-							)}
-							{!compact && stats && timelineLayer && (
-								<StatsPanel
-									stats={stats}
-									date={fmtShortDate(timelineLayer.dates[dispIndex])}
-									threshold={state.statsThreshold}
-									onThreshold={store.actions.setStatsThreshold}
-									onFlyToMax={() => {
-										if (stats.maxCell) flight.target = { ...stats.maxCell };
-									}}
-									compact={compact}
 								/>
 							)}
 						</div>
@@ -733,54 +705,34 @@ function ExplorerScene() {
 											onSelect={selectItem}
 											displacement={timelineLayer}
 											visible={mainUi.visible}
-											opacity={mainUi.opacity}
-											onVisible={(v) =>
-												store.actions.setLayerVisible(MAIN_LAYER, v)
-											}
-											onOpacity={(v) =>
-												store.actions.setLayerOpacity(MAIN_LAYER, v)
-											}
 											loading={Boolean(raster) && rasterData.isPending}
 											failed={Boolean(raster) && rasterData.isError}
 											fieldLimit={fieldLimit}
 											zoneCount={zoneData?.zones.length ?? 0}
-											deform3d={state.deform3d}
-											deformFactor={state.deformFactor}
-											onDeform3d={store.actions.setDeform3d}
-											onDeformFactor={store.actions.setDeformFactor}
-											overlays={overlayModels.map((o) => ({
-												id: o.id,
-												name: o.name,
-												on: Boolean(state.overlays[o.id]),
-												km: overlayBands ? o.km : null,
-											}))}
-											onOverlay={store.actions.setOverlay}
 										/>
-										{compact && stats && timelineLayer && (
-											<StatsPanel
-												stats={stats}
-												date={fmtShortDate(timelineLayer.dates[dispIndex])}
-												threshold={state.statsThreshold}
-												onThreshold={store.actions.setStatsThreshold}
-												onFlyToMax={() => {
-													if (stats.maxCell)
-														flight.target = { ...stats.maxCell };
-												}}
-												compact={compact}
-											/>
-										)}
 									</>
 								)}
 						</div>
 					</div>
 
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-						<Probe
+						<ShipStatus
 							region={region}
 							layer={activeLayer}
 							cube={activeCube}
 							probe={state.probe}
-							dateIndex={state.dateIndex}
+							groundM={
+								state.probe && terrain.data
+									? sampleBilinear(
+											terrain.data,
+											region.width,
+											region.height,
+											state.probe.col,
+											state.probe.row,
+										)
+									: null
+							}
+							dateIndex={dispIndex}
 							compact={compact}
 							mode={view === "velocity" ? "velocity" : "cumulative"}
 							reading={reading}

@@ -44,15 +44,6 @@ export function DataNotice({ layer }: { layer: Layer | null }) {
 	);
 }
 
-/** Etiqueta permanente mientras el hundimiento 3D exagerado está activo (spec). */
-export function DeformBadge({ factor }: { factor: number }) {
-	return (
-		<output className="pointer-events-auto flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-950/85 px-3.5 py-1.5 font-bold text-cyan-100 text-xs shadow-lg backdrop-blur-md sm:text-sm">
-			Hundimiento exagerado ×{factor.toLocaleString("es-MX")} · ilustrativo
-		</output>
-	);
-}
-
 export function SidePanel({
 	title,
 	onClose,

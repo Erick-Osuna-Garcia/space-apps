@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Poi } from "../manifest";
 import {
-	areaComparison,
+	compassHeading,
 	elapsedText,
 	nearestPoi,
+	shipSpeedKmh,
 	sizeComparison,
 	trendLevel,
 } from "./friendly";
@@ -41,14 +42,17 @@ describe("sizeComparison", () => {
 	});
 });
 
-describe("areaComparison", () => {
-	it("redondea a dos cifras significativas", () => {
-		expect(areaComparison(120)).toBe("≈ 17,000 canchas de fútbol");
+describe("tablero de la nave", () => {
+	it("velocidad en km/h, 0 si casi no se mueve", () => {
+		expect(shipSpeedKmh(38, 0, 121)).toBe(16600);
+		expect(shipSpeedKmh(0.1, 0.1, 121)).toBe(0);
 	});
-	it("maneja áreas pequeñas y nulas", () => {
-		expect(areaComparison(0)).toBeNull();
-		expect(areaComparison(0.001)).toBe("≈ menos de una cancha de fútbol");
-		expect(areaComparison(0.00714)).toBe("≈ 1 cancha de fútbol");
+	it("rumbo en 8 direcciones", () => {
+		expect(compassHeading(0, -5)).toBe("N");
+		expect(compassHeading(5, 0)).toBe("E");
+		expect(compassHeading(0, 5)).toBe("S");
+		expect(compassHeading(-5, -5)).toBe("NO");
+		expect(compassHeading(0, 0)).toBeNull();
 	});
 });
 

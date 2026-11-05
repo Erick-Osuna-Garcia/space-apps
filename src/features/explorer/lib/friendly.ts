@@ -45,21 +45,24 @@ export function sizeComparison(cm: number | null): string | null {
 	return match ? match[1] : "más que una regla escolar";
 }
 
-const SOCCER_FIELD_KM2 = (105 * 68) / 1e6;
-
-function twoSignificant(v: number): number {
-	const magnitude = 10 ** (Math.floor(Math.log10(v)) - 1);
-	return Math.round(v / magnitude) * magnitude;
+/** Velocidad de la nave en km/h, redondeada; 0 si casi no se mueve. */
+export function shipSpeedKmh(
+	vx: number,
+	vz: number,
+	cellSizeM: number,
+): number {
+	const cellsPerS = Math.hypot(vx, vz);
+	if (cellsPerS < 0.5) return 0;
+	return Math.round((cellsPerS * cellSizeM * 3.6) / 100) * 100;
 }
 
-/** Área expresada en canchas de fútbol (aproximada); null si no hay área. */
-export function areaComparison(km2: number): string | null {
-	if (km2 <= 0) return null;
-	const fields = km2 / SOCCER_FIELD_KM2;
-	if (fields < 1) return "≈ menos de una cancha de fútbol";
-	const rounded = fields < 10 ? Math.round(fields) : twoSignificant(fields);
-	const text = rounded.toLocaleString("en-US");
-	return `≈ ${text} ${rounded === 1 ? "cancha" : "canchas"} de fútbol`;
+const COMPASS = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
+
+/** Rumbo en 8 direcciones; en la escena x = este y z = sur. null si está detenida. */
+export function compassHeading(vx: number, vz: number): string | null {
+	if (Math.hypot(vx, vz) < 0.5) return null;
+	const degrees = (Math.atan2(vx, -vz) * 180) / Math.PI;
+	return COMPASS[Math.round(((degrees + 360) % 360) / 45) % 8];
 }
 
 /** Punto de interés más cercano y frase para mostrarlo. */

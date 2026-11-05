@@ -30,17 +30,32 @@ function ProbePublisher({
 }) {
 	const flight = useFlight();
 	const acc = useRef(0);
-	const last = useRef({ col: -1, row: -1 });
+	const last = useRef({ col: -1, row: -1, moving: false });
 	useFrame((_, dt) => {
 		acc.current += dt;
 		if (acc.current < PROBE_INTERVAL_S) return;
 		acc.current = 0;
 		const col = Math.round(flight.col * 10) / 10;
 		const row = Math.round(flight.row * 10) / 10;
-		if (col === last.current.col && row === last.current.row) return;
-		last.current = { col, row };
+		const moving = Math.hypot(flight.vx, flight.vz) >= 0.5;
+		// detenida no hay nada nuevo que publicar, salvo el momento en que se detiene
+		if (
+			col === last.current.col &&
+			row === last.current.row &&
+			moving === last.current.moving
+		) {
+			return;
+		}
+		last.current = { col, row, moving };
 		const [lon, lat] = gridToLonLat(region, flight.col, flight.row);
-		store.actions.setProbe({ col: flight.col, row: flight.row, lon, lat });
+		store.actions.setProbe({
+			col: flight.col,
+			row: flight.row,
+			lon,
+			lat,
+			vx: flight.vx,
+			vz: flight.vz,
+		});
 	});
 	return null;
 }
