@@ -9,6 +9,7 @@ import {
 	datePlane,
 	differentialField,
 	differentialReading,
+	zoneContext,
 	zoneMap,
 	zoneReading,
 } from "./impact";
@@ -99,6 +100,23 @@ describe("zoneMap", () => {
 		const f = new Float32Array(36).fill(-3);
 		const v = new Float32Array(36).fill(Number.NaN);
 		expect(zoneMap(f, W, 6, v, 1000).zones[0].meanVelocity).toBeNull();
+	});
+});
+
+describe("zoneContext", () => {
+	it("suma personas y elige el uso predominante", () => {
+		const c = zoneContext({ cells: [0, 1, 2] }, [10, 20, 0], [5, 5, 6], {
+			5: "Cultivos",
+			6: "Zona urbana",
+		});
+		expect(c).toEqual({ people: 30, landUse: "Cultivos" });
+	});
+	it("sin datos no inventa valores", () => {
+		expect(zoneContext({ cells: [0] }, null, null, {})).toEqual({
+			people: null,
+			landUse: null,
+		});
+		expect(zoneContext({ cells: [0] }, [0], [1], {}).people).toBeNull();
 	});
 });
 

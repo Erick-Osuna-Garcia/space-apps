@@ -1,36 +1,69 @@
 import { Canvas } from "@react-three/fiber";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useSelector } from "@tanstack/react-store";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useKeyboard } from "./controls/useKeyboard";
-import { layerCubeQuery, manifestQuery, terrainQuery } from "./data/queries";
+import {
+	layerCubeQuery,
+	manifestQuery,
+	overlayQuery,
+	rasterQuery,
+	terrainQuery,
+} from "./data/queries";
 import {
 	hasWebGL2,
 	useIsCompact,
 	usePrefersReducedMotion,
 } from "./hooks/useMedia";
-import { cellIndex, sampleBilinear } from "./lib/grid";
+import {
+	buildCatalog,
+	type CatalogItem,
+	categoricalPlane,
+	classColors,
+	continuousPlane,
+	displacementLayer,
+	NO_READING,
+	nearestDateIndex,
+	readLayer,
+	resolveView,
+} from "./lib/catalog";
+import {
+	elapsedText,
+	nearestPoi,
+	TREND_LABELS,
+	trendLevel,
+} from "./lib/friendly";
+import { cellIndex, gridToLonLat, sampleBilinear } from "./lib/grid";
 import {
 	accelerationReading,
+	BAND_COLORS,
 	createImpactAnalysis,
 	differentialReading,
 	MAX_LABELED_ZONES,
 	MIN_DATES_ACCELERATION,
+	zoneContext,
 	zoneReading,
 } from "./lib/impact";
+import {
+	affectedSegments,
+	nearestSegment,
+	toSegments,
+} from "./lib/infrastructure";
 import {
 	dateStats,
 	fillForDisplay,
 	robustLimit,
 	velocityField,
 } from "./lib/stats";
-import type { Poi, Region } from "./manifest";
+import type { Overlay, Poi, Region } from "./manifest";
 import { createFlight, FlightContext, teleport } from "./scene/flight";
 import { PaintMode } from "./scene/layerMaterial";
 import { Scene } from "./scene/Scene";
 import { DEFAULT_EXAGGERATION, verticalScale } from "./scene/terrainGeometry";
 import { explorerStore, layerUi, type MapView } from "./store";
+import { DateTitle } from "./ui/DateTitle";
+import { Inspector, type InspectorRow } from "./ui/Inspector";
 import { LayerPanel } from "./ui/LayerPanel";
 import {
 	ContextContent,
@@ -58,6 +91,9 @@ const fmtShortDate = (iso: string) =>
 		timeZone: "UTC",
 	});
 
+const NO_COLORS: string[] = [];
+const NO_OVERLAYS: Overlay[] = [];
+
 function timelineNote(view: MapView, deform3d: boolean) {
 	if (view !== "velocity" && view !== "acceleration") return undefined;
 	const base =
@@ -70,6 +106,8 @@ function timelineNote(view: MapView, deform3d: boolean) {
 const WARP_OUT_MS = 450;
 const WARP_IN_MS = 400;
 const DEFAULT_POI = "cerro-prieto";
+/** Estado de UI de la capa principal: visibilidad y opacidad son comunes a todas. */
+const MAIN_LAYER = "main";
 const exaggeration = DEFAULT_EXAGGERATION;
 const store = explorerStore;
 
@@ -108,10 +146,28 @@ function ExplorerScene() {
 		manifest.data?.regions.find((r) => r.id === state.regionId) ?? null;
 	const terrain = useQuery(terrainQuery(region));
 
-	const activeLayer =
-		region?.layers.find((l) => layerUi(state, l.id).visible) ?? null;
-	const timelineLayer = activeLayer ?? region?.layers[0] ?? null;
+	// Capa de desplazamiento: base del movimiento y del hundimiento 3D.
+	const timelineLayer = displacementLayer(region);
+	const mainUi = layerUi(state, MAIN_LAYER);
+	const activeLayer = mainUi.visible ? timelineLayer : null;
 	const cube = useQuery(layerCubeQuery(region, timelineLayer));
+
+	// Catálogo: qué pinta el mapa y con qué fechas.
+	const catalog = useMemo(
+		() => (region ? buildCatalog(region, MIN_DATES_ACCELERATION) : []),
+		[region],
+	);
+	const item = resolveView(catalog, state.mapView);
+	const raster = item?.layer ?? null;
+	const rasterData = useQuery(rasterQuery(region, raster));
+	const timelineDates = raster ? raster.dates : (timelineLayer?.dates ?? []);
+	const currentDate =
+		timelineDates[Math.min(state.dateIndex, timelineDates.length - 1)] ?? null;
+	// El relieve sigue a la fecha más cercana de la capa de desplazamiento.
+	const dispIndex = Math.max(
+		nearestDateIndex(timelineLayer?.dates ?? [], currentDate),
+		0,
+	);
 
 	const activeCube = activeLayer ? (cube.data ?? null) : null;
 
@@ -146,7 +202,7 @@ function ExplorerScene() {
 							nodata: timelineLayer.nodata,
 						},
 						velocity,
-						state.dateIndex,
+						dispIndex,
 						state.statsThreshold,
 						region.cellSizeM,
 					)
@@ -156,7 +212,7 @@ function ExplorerScene() {
 			timelineLayer,
 			activeCube,
 			velocity,
-			state.dateIndex,
+			dispIndex,
 			state.statsThreshold,
 		],
 	);
@@ -180,39 +236,61 @@ function ExplorerScene() {
 				: null,
 		[region, timelineLayer, activeCube, velocity],
 	);
-	const accelerationAvailable =
-		(timelineLayer?.dates.length ?? 0) >= MIN_DATES_ACCELERATION;
-	const view =
-		state.mapView === "acceleration" && !accelerationAvailable
-			? "cumulative"
-			: state.mapView;
-	const zoneData =
-		view === "zones" ? (impact?.zones(state.dateIndex) ?? null) : null;
+	const view = item?.view ?? "cumulative";
+	const zoneData = view === "zones" ? (impact?.zones(dispIndex) ?? null) : null;
 	const zones = zoneData?.zones.slice(0, MAX_LABELED_ZONES) ?? [];
+
+	// Plano de una capa raster en la fecha actual.
+	const rasterIndex = raster
+		? Math.max(nearestDateIndex(raster.dates, currentDate), 0)
+		: 0;
+	const rasterPlane = useMemo(() => {
+		if (!raster || !rasterData.data || !region) return null;
+		const plane = region.width * region.height;
+		return raster.paint === "categorical"
+			? categoricalPlane(rasterData.data, plane, rasterIndex)
+			: continuousPlane(rasterData.data, raster, plane, rasterIndex);
+	}, [raster, rasterData.data, region, rasterIndex]);
+	const rasterBands = rasterPlane instanceof Uint8Array ? rasterPlane : null;
+	const rasterField = rasterPlane instanceof Float32Array ? rasterPlane : null;
+
 	const field =
-		view === "velocity"
+		rasterField ??
+		(view === "velocity"
 			? velocity
 			: view === "differential"
-				? (impact?.differential(state.dateIndex) ?? null)
+				? (impact?.differential(dispIndex) ?? null)
 				: view === "acceleration"
 					? (impact?.acceleration() ?? null)
-					: null;
-	const fieldLimit =
-		view === "velocity"
+					: null);
+	const fieldLimit = raster
+		? raster.paint === "diverging"
+			? Math.max(Math.abs(raster.valueRange[0]), Math.abs(raster.valueRange[1]))
+			: raster.valueRange[1]
+		: view === "velocity"
 			? velocityLimit
 			: view === "differential"
 				? (impact?.differentialLimit() ?? 1)
 				: view === "acceleration"
 					? (impact?.accelerationLimit() ?? 1)
 					: 1;
-	const paintMode =
-		view === "zones"
+	const paintMode = raster
+		? raster.paint === "categorical"
+			? PaintMode.BANDS
+			: raster.paint === "sequential"
+				? PaintMode.FIELD_SEQUENTIAL
+				: PaintMode.FIELD_DIVERGING
+		: view === "zones"
 			? PaintMode.BANDS
 			: view === "differential"
 				? PaintMode.FIELD_SEQUENTIAL
 				: view === "velocity" || view === "acceleration"
 					? PaintMode.FIELD_DIVERGING
 					: PaintMode.CUBE;
+	const bandPalette = useMemo(
+		() => (raster ? classColors(raster, BAND_COLORS[0]) : NO_COLORS),
+		[raster],
+	);
 
 	// Hundimiento 3D (D13): unidades de escena por cm, ×N respecto a la escala horizontal.
 	const deformScale =
@@ -242,22 +320,14 @@ function ExplorerScene() {
 		const { width: W, height: H } = region;
 		const plane = W * H;
 		const layer = timelineLayer;
-		const offset =
-			Math.min(state.dateIndex, (layer?.dates.length ?? 1) - 1) * plane;
+		const offset = Math.min(dispIndex, (layer?.dates.length ?? 1) - 1) * plane;
 		return (col: number, row: number) => {
 			const base = sampleBilinear(data, W, H, col, row) * vs;
 			if (!deformScale || !deformCube) return base;
 			const d = sampleBilinear(deformCube, W, H, col, row, undefined, offset);
 			return Number.isFinite(d) ? base + d * deformScale : base;
 		};
-	}, [
-		region,
-		terrain.data,
-		deformScale,
-		deformCube,
-		timelineLayer,
-		state.dateIndex,
-	]);
+	}, [region, terrain.data, deformScale, deformCube, timelineLayer, dispIndex]);
 
 	// La nave, los faros y el picking siguen la superficie actual (incluido el hundimiento 3D).
 	useEffect(() => {
@@ -317,10 +387,92 @@ function ExplorerScene() {
 		if (reducedMotion) store.actions.setPlaying(false);
 	}, [reducedMotion, region?.id]);
 
+	const dateCount = timelineDates.length;
 	const advance = useCallback(
-		() => store.actions.advanceDate(timelineLayer?.dates.length ?? 0),
-		[timelineLayer],
+		() => store.actions.advanceDate(dateCount),
+		[dateCount],
 	);
+	const selectItem = (next: CatalogItem) =>
+		store.actions.setView(
+			next.view,
+			nearestDateIndex(
+				next.layer ? next.layer.dates : (timelineLayer?.dates ?? []),
+				currentDate,
+			),
+		);
+
+	// Infraestructura: tramos resaltados según la fecha.
+	const overlayList = region?.overlays ?? NO_OVERLAYS;
+	const overlayData = useQueries({
+		queries: overlayList.map((o) => ({
+			...overlayQuery(o),
+			enabled: Boolean(state.overlays[o.id]) || Boolean(state.inspected),
+		})),
+	});
+	const overlayBands = overlayList.some((o) => state.overlays[o.id])
+		? (impact?.zones(dispIndex).bands ?? null)
+		: null;
+	const overlayDiff = overlayBands
+		? (impact?.differential(dispIndex) ?? null)
+		: null;
+	const overlayCut = overlayBands
+		? (impact?.differentialLimit() ?? 1) * 0.6
+		: 1;
+	const overlaySignature = overlayData.map((d) => d.dataUpdatedAt).join();
+	// biome-ignore lint/correctness/useExhaustiveDependencies: overlaySignature resume overlayData, que cambia de identidad en cada render
+	const overlayModels = useMemo(
+		() =>
+			overlayList.map((o, i) => {
+				const features = overlayData[i]?.data ?? [];
+				const segments = toSegments(features, region?.cellSizeM ?? 1);
+				const hit = affectedSegments(
+					segments,
+					region?.width ?? 0,
+					region?.height ?? 0,
+					overlayBands,
+					overlayDiff,
+					overlayCut,
+				);
+				return { ...o, segments, ...hit, features };
+			}),
+		[
+			overlaySignature,
+			overlayList,
+			region,
+			overlayBands,
+			overlayDiff,
+			overlayCut,
+		],
+	);
+
+	// Población y uso de suelo para las etiquetas de zona.
+	const popLayer = region?.layers.find((l) => l.id === "population") ?? null;
+	const landLayer = region?.layers.find((l) => l.id === "landcover") ?? null;
+	const popData = useQuery({
+		...rasterQuery(region, popLayer),
+		enabled: Boolean(popLayer) && view === "zones",
+	});
+	const landData = useQuery({
+		...rasterQuery(region, landLayer),
+		enabled: Boolean(landLayer) && view === "zones",
+	});
+	const landNames = useMemo(
+		() =>
+			Object.fromEntries(
+				(landLayer?.classes ?? []).map((c) => [c.value, c.name]),
+			),
+		[landLayer],
+	);
+
+	// El inspector lee todas las capas de la región al tocar un punto.
+	const inspectQueries = useQueries({
+		queries: (region?.layers ?? [])
+			.filter((l) => l.type === "raster")
+			.map((l) => ({
+				...rasterQuery(region, l),
+				enabled: Boolean(state.inspected),
+			})),
+	});
 
 	if (manifest.isError) {
 		return (
@@ -338,16 +490,80 @@ function ExplorerScene() {
 	const reading =
 		probeCell < 0
 			? null
-			: zoneData
-				? zoneReading(zoneData.bands[probeCell])
-				: view === "differential" && field
-					? differentialReading(field[probeCell])
-					: view === "acceleration" && field
-						? accelerationReading(field[probeCell])
-						: null;
+			: raster
+				? rasterData.data && state.probe
+					? `${raster.name}: ${readLayer(raster, rasterData.data, region, state.probe.col, state.probe.row, currentDate)}`
+					: null
+				: zoneData
+					? zoneReading(zoneData.bands[probeCell])
+					: view === "differential" && field
+						? differentialReading(field[probeCell])
+						: view === "acceleration" && field
+							? accelerationReading(field[probeCell])
+							: null;
+
+	const inspected = state.inspected;
+	const inspectorRows: InspectorRow[] = [];
+	if (inspected) {
+		if (timelineLayer && cube.data) {
+			inspectorRows.push({
+				name: "Desplazamiento",
+				value: readLayer(
+					timelineLayer,
+					cube.data,
+					region,
+					inspected.col,
+					inspected.row,
+					currentDate,
+				),
+			});
+			const v =
+				velocity?.[
+					cellIndex(region.width, region.height, inspected.col, inspected.row)
+				] ?? Number.NaN;
+			inspectorRows.push({
+				name: "Tendencia",
+				value: Number.isFinite(v)
+					? `${v.toFixed(1)} cm/año · ${TREND_LABELS[trendLevel(v)]}`
+					: NO_READING,
+			});
+		}
+		for (const o of overlayModels) {
+			const seg = nearestSegment(o.segments, inspected.col, inspected.row);
+			if (seg) {
+				const f = o.features[seg.feature];
+				inspectorRows.push({
+					name: o.kind === "canal" ? "Canal" : "Camino",
+					value: f.name || f.class,
+				});
+			}
+		}
+		region.layers
+			.filter((l) => l.type === "raster")
+			.forEach((l, i) => {
+				const data = inspectQueries[i]?.data;
+				inspectorRows.push({
+					name: l.name,
+					value: data
+						? readLayer(
+								l,
+								data,
+								region,
+								inspected.col,
+								inspected.row,
+								currentDate,
+							)
+						: inspectQueries[i]?.isError
+							? NO_READING
+							: "Cargando…",
+				});
+			});
+	}
+	const [inspectLon, inspectLat] = inspected
+		? gridToLonLat(region, inspected.col, inspected.row)
+		: [0, 0];
 
 	const sceneReady = terrain.data && readyRegion === region.id;
-	const ui = activeLayer ? layerUi(state, activeLayer.id) : null;
 
 	return (
 		<FlightContext.Provider value={flight}>
@@ -365,15 +581,24 @@ function ExplorerScene() {
 								step={compact ? 2 : 1}
 								layer={activeLayer}
 								cube={activeCube}
-								layerVisible={Boolean(ui?.visible)}
-								layerOpacity={ui?.opacity ?? 0}
-								dateIndex={state.dateIndex}
+								layerVisible={mainUi.visible}
+								layerOpacity={mainUi.opacity}
+								dateIndex={dispIndex}
 								reducedMotion={reducedMotion}
 								heightAt={heightAt}
 								paintMode={paintMode}
 								field={field}
 								fieldLimit={fieldLimit}
-								bands={zoneData?.bands ?? null}
+								fieldMin={
+									raster?.paint === "sequential" ? raster.valueRange[0] : 0
+								}
+								palette={raster?.palette ?? "heat"}
+								bands={rasterBands ?? zoneData?.bands ?? null}
+								bandPalette={raster ? bandPalette : BAND_COLORS}
+								contour={!raster}
+								onPick={(col, row) => store.actions.setInspected({ col, row })}
+								overlays={overlayModels.filter((o) => state.overlays[o.id])}
+								arrows={raster?.id === "east-west" ? rasterField : null}
 								zones={zones}
 								zoneLabels={zoneLabels}
 								deformScale={deformScale}
@@ -398,6 +623,14 @@ function ExplorerScene() {
 							onSelect={(zone) => {
 								flight.target = { col: zone.col, row: zone.row };
 							}}
+							context={(zone) =>
+								zoneContext(
+									zone,
+									popData.data ?? null,
+									landData.data ?? null,
+									landNames,
+								)
+							}
 						/>
 					)}
 					{!sceneReady && (
@@ -418,9 +651,9 @@ function ExplorerScene() {
 						onOpenCredits={() =>
 							store.actions.setCreditsOpen(!state.creditsOpen)
 						}
+						notice={<DataNotice layer={raster ?? activeLayer} />}
 					/>
 					<div className="flex flex-wrap justify-center gap-2">
-						<DataNotice layer={activeLayer} />
 						{deformScale > 0 && <DeformBadge factor={state.deformFactor} />}
 					</div>
 					{compact && (
@@ -445,7 +678,7 @@ function ExplorerScene() {
 							{!compact && stats && timelineLayer && (
 								<StatsPanel
 									stats={stats}
-									date={fmtShortDate(timelineLayer.dates[state.dateIndex])}
+									date={fmtShortDate(timelineLayer.dates[dispIndex])}
 									threshold={state.statsThreshold}
 									onThreshold={store.actions.setStatsThreshold}
 									onFlyToMax={() => {
@@ -471,7 +704,7 @@ function ExplorerScene() {
 								>
 									<CreditsContent
 										region={region}
-										layer={activeLayer ?? timelineLayer}
+										layer={raster ?? activeLayer ?? timelineLayer}
 									/>
 								</SidePanel>
 							)}
@@ -479,27 +712,54 @@ function ExplorerScene() {
 								!state.contextOpen &&
 								!state.creditsOpen && (
 									<>
+										{inspected && (
+											<Inspector
+												place={
+													nearestPoi(
+														region.pois,
+														inspected.col,
+														inspected.row,
+														region.cellSizeM,
+													)?.text ?? null
+												}
+												coords={`${inspectLat.toFixed(4)}°, ${inspectLon.toFixed(4)}°`}
+												rows={inspectorRows}
+												onClose={() => store.actions.setInspected(null)}
+											/>
+										)}
 										<LayerPanel
-											region={region}
-											ui={(id) => layerUi(state, id)}
-											onVisible={store.actions.setLayerVisible}
-											onOpacity={store.actions.setLayerOpacity}
-											view={view}
-											onView={store.actions.setMapView}
+											catalog={catalog}
+											active={item}
+											onSelect={selectItem}
+											displacement={timelineLayer}
+											visible={mainUi.visible}
+											opacity={mainUi.opacity}
+											onVisible={(v) =>
+												store.actions.setLayerVisible(MAIN_LAYER, v)
+											}
+											onOpacity={(v) =>
+												store.actions.setLayerOpacity(MAIN_LAYER, v)
+											}
+											loading={Boolean(raster) && rasterData.isPending}
+											failed={Boolean(raster) && rasterData.isError}
 											fieldLimit={fieldLimit}
 											zoneCount={zoneData?.zones.length ?? 0}
-											accelerationAvailable={accelerationAvailable}
 											deform3d={state.deform3d}
 											deformFactor={state.deformFactor}
 											onDeform3d={store.actions.setDeform3d}
 											onDeformFactor={store.actions.setDeformFactor}
+											overlays={overlayModels.map((o) => ({
+												id: o.id,
+												name: o.name,
+												on: Boolean(state.overlays[o.id]),
+												km: overlayBands ? o.km : null,
+											}))}
+											onOverlay={store.actions.setOverlay}
 										/>
 										{compact && stats && timelineLayer && (
 											<StatsPanel
 												stats={stats}
-												date={fmtShortDate(
-													timelineLayer.dates[state.dateIndex],
-												)}
+												date={fmtShortDate(timelineLayer.dates[dispIndex])}
 												threshold={state.statsThreshold}
 												onThreshold={store.actions.setStatsThreshold}
 												onFlyToMax={() => {
@@ -528,16 +788,23 @@ function ExplorerScene() {
 							failed={Boolean(activeLayer) && cube.isError}
 						/>
 						<div className="flex min-w-0 flex-1 flex-col items-center gap-2">
-							{timelineLayer && (
+							{dateCount > 0 && currentDate ? (
 								<div className="w-full max-w-2xl">
+									<DateTitle
+										date={fmtShortDate(currentDate)}
+										subtitle={elapsedText(timelineDates[0], currentDate)}
+										announce={!state.playing}
+									/>
 									<Timeline
-										dates={timelineLayer.dates}
-										index={state.dateIndex}
+										dates={timelineDates}
+										index={Math.min(state.dateIndex, dateCount - 1)}
 										playing={state.playing}
 										onSelect={store.actions.selectDate}
 										onPlaying={store.actions.setPlaying}
 										onAdvance={advance}
-										ready={Boolean(activeCube)}
+										ready={
+											raster ? Boolean(rasterData.data) : Boolean(activeCube)
+										}
 										note={
 											activeLayer
 												? timelineNote(view, state.deform3d)
@@ -545,6 +812,14 @@ function ExplorerScene() {
 										}
 									/>
 								</div>
+							) : (
+								raster?.referenceDate && (
+									<DateTitle
+										date={raster.referenceDate.slice(0, 4)}
+										subtitle="Capa estática, sin línea de tiempo"
+										announce
+									/>
+								)
 							)}
 							{compact && (
 								<button
@@ -558,20 +833,6 @@ function ExplorerScene() {
 							)}
 							<ControlsHint compact={compact} />
 						</div>
-						{timelineLayer && (
-							<output className="pointer-events-auto self-end rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-2.5 text-right shadow-2xl backdrop-blur-md">
-								<span className="block font-bold text-[0.68rem] text-slate-400 uppercase tracking-[0.16em]">
-									Fecha:
-								</span>
-								<span className="block whitespace-nowrap font-extrabold text-white text-xl tabular-nums sm:text-2xl">
-									{fmtShortDate(
-										timelineLayer.dates[
-											Math.min(state.dateIndex, timelineLayer.dates.length - 1)
-										],
-									)}
-								</span>
-							</output>
-						)}
 					</div>
 				</div>
 			</div>

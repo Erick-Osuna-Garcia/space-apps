@@ -1,9 +1,10 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
-import { symmetricLimit } from "../lib/colormap";
+import { type Palette, symmetricLimit } from "../lib/colormap";
 import type { Layer, Region } from "../manifest";
 import {
+	bandColors,
 	bandsTexture,
 	createLayerUniforms,
 	createTerrainMaterial,
@@ -12,10 +13,11 @@ import {
 	fieldTexture,
 	PaintMode,
 	type PaintModeValue,
+	paletteLut,
 } from "./layerMaterial";
 import { buildTerrain } from "./terrainGeometry";
 
-const TRANSITION_S = 0.6;
+const TRANSITION_S = 2;
 
 interface TerrainProps {
 	region: Region;
@@ -32,7 +34,12 @@ interface TerrainProps {
 	paintMode: PaintModeValue;
 	field: Float32Array | null;
 	fieldLimit: number;
+	fieldMin: number;
+	palette: Palette;
 	bands: Uint8Array | null;
+	/** Colores por valor de banda y si llevan contorno. */
+	bandPalette: string[];
+	contour: boolean;
 	/** Unidades de escena por cm de desplazamiento; 0 = sin hundimiento 3D. */
 	deformScale: number;
 	/** Cubo de geometría (cm) con huecos rellenados; null = sin hundimiento 3D. */
@@ -53,7 +60,11 @@ export function Terrain({
 	paintMode,
 	field,
 	fieldLimit,
+	fieldMin,
+	palette,
 	bands,
+	bandPalette,
+	contour,
 	deformScale,
 	deformCube,
 }: TerrainProps) {
@@ -127,7 +138,18 @@ export function Terrain({
 		uniforms.uField.value.dispose();
 		uniforms.uField.value = fieldTexture(field, region.width, region.height);
 		uniforms.uFieldLimit.value = fieldLimit;
-	}, [field, fieldLimit, region, uniforms]);
+		uniforms.uFieldMin.value = fieldMin;
+	}, [field, fieldLimit, fieldMin, region, uniforms]);
+
+	useEffect(() => {
+		uniforms.uLutSeq.value.dispose();
+		uniforms.uLutSeq.value = paletteLut(palette);
+	}, [palette, uniforms]);
+
+	useEffect(() => {
+		uniforms.uBandColors.value = bandColors(bandPalette);
+		uniforms.uContour.value = contour ? 1 : 0;
+	}, [bandPalette, contour, uniforms]);
 
 	// Bandas de la vista Zonas.
 	useEffect(() => {
@@ -147,12 +169,15 @@ export function Terrain({
 	}, [dateIndex, reducedMotion, uniforms]);
 
 	useFrame((_, dt) => {
-		const on = Boolean(visible && layer && cube);
+		const ready = paintMode === PaintMode.BANDS ? bands : field;
+		const hasCube = Boolean(layer && cube);
+		const on = Boolean(
+			visible && (paintMode === PaintMode.CUBE ? hasCube : ready || hasCube),
+		);
 		uniforms.uLayerOn.value = on ? 1 : 0;
 		uniforms.uOpacity.value = opacity;
-		const ready = paintMode === PaintMode.BANDS ? bands : field;
 		uniforms.uMode.value = ready ? paintMode : PaintMode.CUBE;
-		uniforms.uDeform.value = on && deformCube ? deformScale : 0;
+		uniforms.uDeform.value = visible && hasCube && deformCube ? deformScale : 0;
 		if (uniforms.uMix.value < 1) {
 			uniforms.uMix.value = Math.min(
 				1,

@@ -1,5 +1,10 @@
 import * as THREE from "three";
-import { colormapLut, sequential } from "../lib/colormap";
+import {
+	colormapLut,
+	PALETTES,
+	type Palette,
+	sequential,
+} from "../lib/colormap";
 import { BAND_COLORS } from "../lib/impact";
 
 export const NODATA_SENTINEL = -9999;
@@ -28,6 +33,10 @@ export interface LayerUniforms {
 	/** Campo 2D de la vista activa (velocidad, diferencial o aceleración). */
 	uField: { value: THREE.DataTexture };
 	uFieldLimit: { value: number };
+	/** Valor del inicio de la escala secuencial. */
+	uFieldMin: { value: number };
+	/** Dibujar contornos entre bandas (vista Zonas). */
+	uContour: { value: number };
 	uLutSeq: { value: THREE.DataTexture };
 	uBands: { value: THREE.DataTexture };
 	uBandColors: { value: THREE.Color[] };
@@ -150,6 +159,19 @@ export function deformCubeTexture(
 	return tex;
 }
 
+/** Colores por valor de banda, siempre 16 para el uniform del shader. */
+export function bandColors(colors: string[]) {
+	return Array.from(
+		{ length: 16 },
+		(_, i) => new THREE.Color(colors[i] ?? "#000000"),
+	);
+}
+
+/** LUT de una paleta, para el modo secuencial. */
+export function paletteLut(palette: Palette) {
+	return lutTexture(colormapLut(256, PALETTES[palette]));
+}
+
 export function createLayerUniforms(): LayerUniforms {
 	return {
 		uCube: { value: emptyCube() },
@@ -164,9 +186,11 @@ export function createLayerUniforms(): LayerUniforms {
 		uMode: { value: 0 },
 		uField: { value: floatTexture(new Float32Array([0]), 1, 1) },
 		uFieldLimit: { value: 10 },
+		uFieldMin: { value: 0 },
+		uContour: { value: 1 },
 		uLutSeq: { value: lutTexture(colormapLut(256, sequential)) },
 		uBands: { value: bandsTexture(new Uint8Array([1]), 1, 1) },
-		uBandColors: { value: BAND_COLORS.map((c) => new THREE.Color(c)) },
+		uBandColors: { value: bandColors(BAND_COLORS) },
 		uDeform: { value: 0 },
 		uDeformCube: { value: emptyCube() },
 		uTexel: { value: new THREE.Vector2(1, 1) },
@@ -227,9 +251,9 @@ uniform sampler2D uLut;
 uniform sampler2D uField;
 uniform sampler2D uLutSeq;
 uniform sampler2D uBands;
-uniform vec3 uBandColors[6];
+uniform vec3 uBandColors[16];
 uniform vec2 uTexel;
-uniform float uDateA, uDateB, uMix, uOpacity, uLimit, uLayerOn, uMode, uFieldLimit;
+uniform float uDateA, uDateB, uMix, uOpacity, uLimit, uLayerOn, uMode, uFieldLimit, uFieldMin, uContour;
 uniform vec3 uNoData;
 varying vec2 vGridUv;
 int bandAt(vec2 uv) {
@@ -258,7 +282,7 @@ if (uLayerOn > 0.5 && uMode > 2.5) {
   if (band == 0) diffuseColor.rgb = mix(diffuseColor.rgb, uNoData, uOpacity);
   else {
     if (band != 1) diffuseColor.rgb = mix(diffuseColor.rgb, uBandColors[band], uOpacity);
-    if (onContour(vGridUv, band, lineWidth)) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), 0.9);
+    if (uContour > 0.5 && onContour(vGridUv, band, lineWidth)) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), 0.9);
   }
 } else if (uLayerOn > 0.5) {
   vec3 layerColor;
@@ -269,7 +293,7 @@ if (uLayerOn > 0.5 && uMode > 2.5) {
     v = texture(uField, vGridUv).r;
     nodata = v < ${NODATA_SENTINEL.toFixed(1)} + 1.0;
     t = uMode > 1.5
-      ? clamp(v / uFieldLimit, 0.0, 1.0)
+      ? clamp((v - uFieldMin) / (uFieldLimit - uFieldMin), 0.0, 1.0)
       : clamp(0.5 - v / (2.0 * uFieldLimit), 0.0, 1.0);
   } else {
     float a = texture(uCube, vec3(vGridUv, uDateA)).r;
@@ -285,6 +309,6 @@ if (uLayerOn > 0.5 && uMode > 2.5) {
 }`,
 			);
 	};
-	material.customProgramCacheKey = () => "terrain-layer-v5";
+	material.customProgramCacheKey = () => "terrain-layer-v6";
 	return material;
 }

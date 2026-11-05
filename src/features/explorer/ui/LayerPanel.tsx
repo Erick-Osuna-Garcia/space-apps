@@ -1,20 +1,23 @@
 import { cn } from "cn";
 import { Layers, Mountain } from "lucide-react";
+import { useState } from "react";
 import { Slider } from "#/components/ui/slider";
 import { Switch } from "#/components/ui/switch";
-import { sequential, symmetricLimit, toCss, vik } from "../lib/colormap";
-import { BAND_COLORS, BAND_NAMES, Band } from "../lib/impact";
-import type { Layer, Region } from "../manifest";
+import { type CatalogItem, THEMES, type Theme } from "../lib/catalog";
 import {
-	DEFORM_FACTORS,
-	type DeformFactor,
-	type LayerUiState,
-	type MapView,
-} from "../store";
+	PALETTES,
+	sequential,
+	symmetricLimit,
+	toCss,
+	vik,
+} from "../lib/colormap";
+import { BAND_COLORS, BAND_NAMES, Band } from "../lib/impact";
+import type { Layer } from "../manifest";
+import { DEFORM_FACTORS, type DeformFactor } from "../store";
 import { InfoHint } from "./InfoHint";
 import { Panel, PanelTitle } from "./Panel";
 
-const VIEW_HELP: Record<MapView, { title: string; text: string[] }> = {
+const VIEW_HELP = {
 	cumulative: {
 		title: "Acumulado",
 		text: ["Cuánto se movió el suelo desde la primera fecha hasta la elegida."],
@@ -45,182 +48,235 @@ const VIEW_HELP: Record<MapView, { title: string; text: string[] }> = {
 			"Con menos de dos años de datos puede reflejar ciclos de temporada, no una tendencia real.",
 		],
 	},
-};
+} as const satisfies Record<string, { title: string; text: readonly string[] }>;
 
 interface LayerPanelProps {
-	region: Region;
-	ui: (layerId: string) => LayerUiState;
-	onVisible: (layerId: string, visible: boolean) => void;
-	onOpacity: (layerId: string, opacity: number) => void;
-	view: MapView;
-	onView: (view: MapView) => void;
+	catalog: CatalogItem[];
+	active: CatalogItem | null;
+	onSelect: (item: CatalogItem) => void;
+	/** Capa de desplazamiento, si la región la tiene. */
+	displacement: Layer | null;
+	visible: boolean;
+	opacity: number;
+	onVisible: (visible: boolean) => void;
+	onOpacity: (opacity: number) => void;
+	loading: boolean;
+	failed: boolean;
 	/** Límite de color del campo de la vista activa. */
 	fieldLimit: number;
 	zoneCount: number;
-	accelerationAvailable: boolean;
 	deform3d: boolean;
 	deformFactor: DeformFactor;
 	onDeform3d: (on: boolean) => void;
 	onDeformFactor: (factor: DeformFactor) => void;
+	overlays: Array<{
+		id: string;
+		name: string;
+		on: boolean;
+		km: number | null;
+	}>;
+	onOverlay: (id: string, on: boolean) => void;
 }
 
 export function LayerPanel({
-	region,
-	ui,
+	catalog,
+	active,
+	onSelect,
+	displacement,
+	visible,
+	opacity,
 	onVisible,
 	onOpacity,
-	view,
-	onView,
+	loading,
+	failed,
 	fieldLimit,
 	zoneCount,
-	accelerationAvailable,
 	deform3d,
 	deformFactor,
 	onDeform3d,
 	onDeformFactor,
+	overlays,
+	onOverlay,
 }: LayerPanelProps) {
+	const themes = THEMES.filter((t) => catalog.some((i) => i.theme === t.id));
+	const [pickedTheme, setTheme] = useState<Theme | null>(null);
+	const theme = pickedTheme ?? active?.theme ?? themes[0]?.id;
+	const help = active?.layer
+		? { title: active.layer.name, text: [active.layer.description] }
+		: active
+			? VIEW_HELP[active.view as keyof typeof VIEW_HELP]
+			: null;
 	return (
 		<Panel className="w-full p-3 sm:w-72">
 			<div className="flex items-center justify-between px-1">
 				<PanelTitle className="flex items-center gap-1.5">
 					<Layers className="size-3.5" aria-hidden /> Capas
 				</PanelTitle>
-				<InfoHint label="Capas">
-					<p>
-						Pinta sobre el mapa lo que midió el radar.{" "}
-						<strong>Acumulado</strong> muestra cuánto cambió el suelo hasta la
-						fecha elegida. <strong>Velocidad</strong> muestra qué tan rápido
-						cambia cada año.
-					</p>
-					<p>Café rojizo: se hunde. Azul: se acerca al satélite.</p>
-				</InfoHint>
+				{catalog.length > 0 && (
+					<span className="flex items-center gap-1">
+						{help && (
+							<InfoHint label={help.title}>
+								{help.text.map((t) => (
+									<p key={t}>{t}</p>
+								))}
+							</InfoHint>
+						)}
+						<Switch
+							aria-label="Mostrar capa"
+							checked={visible}
+							onCheckedChange={onVisible}
+						/>
+					</span>
+				)}
 			</div>
-			{region.layers.length === 0 ? (
+			{catalog.length === 0 ? (
 				<p className="mt-2 rounded-xl bg-white/5 px-3 py-2.5 text-sm text-slate-300">
-					Los fenómenos de esta región (expansión urbana, Río Tijuana) llegarán
-					próximamente. Por ahora puedes explorar su relieve.
+					Aún no hay capas para esta región. Por ahora puedes explorar su
+					relieve.
 				</p>
 			) : (
-				<div className="mt-2 space-y-3">
-					{region.layers.map((layer) => {
-						const state = ui(layer.id);
-						const id = `layer-${layer.id}`;
-						return (
-							<div key={layer.id} className="rounded-xl bg-white/5 px-3 py-2.5">
-								<div className="flex items-center justify-between gap-3">
-									<label
-										htmlFor={id}
-										className="text-sm font-semibold text-slate-100"
+				<>
+					<Segmented
+						label="Tema"
+						value={theme}
+						onChange={setTheme}
+						options={themes.map((t) => ({ value: t.id, label: t.label }))}
+					/>
+					<ul className="mt-2 space-y-0.5">
+						{catalog
+							.filter((i) => i.theme === theme)
+							.map((item) => (
+								<li key={item.view}>
+									<button
+										type="button"
+										disabled={item.disabled}
+										aria-pressed={item.view === active?.view}
+										onClick={() => onSelect(item)}
+										className={cn(
+											"w-full rounded-lg px-2.5 py-1.5 text-left font-semibold text-sm transition disabled:cursor-not-allowed disabled:opacity-40",
+											item.view === active?.view
+												? "bg-cyan-400 text-slate-950"
+												: "text-slate-200 hover:bg-white/10",
+										)}
 									>
-										{layer.name}
+										{item.name}
+									</button>
+								</li>
+							))}
+					</ul>
+					{loading && (
+						<p className="mt-2 px-1 text-slate-300 text-xs">Cargando capa…</p>
+					)}
+					{failed && (
+						<p className="mt-2 px-1 text-amber-200 text-xs">
+							No se pudo cargar esta capa. El mapa conserva la anterior.
+						</p>
+					)}
+					{visible && active && (
+						<div className="mt-2 rounded-xl bg-white/5 px-3 py-2.5">
+							<div className="flex items-center gap-3">
+								<span className="text-slate-400 text-xs">Opacidad</span>
+								<Slider
+									aria-label={`Opacidad de ${active.name}`}
+									min={0}
+									max={1}
+									step={0.05}
+									value={[opacity]}
+									onValueChange={([v]) => onOpacity(v)}
+								/>
+							</div>
+							<Legend
+								item={active}
+								displacement={displacement}
+								fieldLimit={fieldLimit}
+								zoneCount={zoneCount}
+							/>
+						</div>
+					)}
+					{overlays.length > 0 && (
+						<div className="mt-3 space-y-2 border-white/10 border-t px-1 pt-3">
+							<div className="flex items-center justify-between">
+								<span className="text-slate-400 text-xs">Infraestructura</span>
+								<InfoHint label="Infraestructura">
+									<p>
+										Caminos y canales de OpenStreetMap. En rojo, los tramos
+										dentro de una zona de hundimiento o donde el terreno se
+										dobla más.
+									</p>
+									<p>
+										Muestra qué está encima de una zona de cambio; no confirma
+										daños.
+									</p>
+								</InfoHint>
+							</div>
+							{overlays.map((o) => (
+								<div
+									key={o.id}
+									className="flex items-center justify-between gap-3"
+								>
+									<label
+										htmlFor={`overlay-${o.id}`}
+										className="font-semibold text-slate-100 text-sm"
+									>
+										{o.name}
+										{o.on && o.km !== null && (
+											<span className="ml-1.5 font-normal text-red-300 text-xs tabular-nums">
+												{o.km.toFixed(1)} km en zona
+											</span>
+										)}
 									</label>
 									<Switch
-										id={id}
-										checked={state.visible}
-										onCheckedChange={(v) => onVisible(layer.id, v)}
+										id={`overlay-${o.id}`}
+										checked={o.on}
+										onCheckedChange={(v) => onOverlay(o.id, v)}
 									/>
 								</div>
-								{state.visible && (
-									<>
-										<div className="mt-3 flex items-center justify-between">
-											<span className="text-xs text-slate-400">
-												Qué muestra el mapa
-											</span>
-											<InfoHint label={VIEW_HELP[view].title}>
-												{VIEW_HELP[view].text.map((t) => (
-													<p key={t}>{t}</p>
-												))}
-											</InfoHint>
-										</div>
-										<Segmented
-											label="Vista del mapa"
-											value={view}
-											onChange={onView}
-											columns={3}
-											options={[
-												{ value: "cumulative", label: "Acumulado" },
-												{ value: "velocity", label: "Velocidad" },
-												{ value: "zones", label: "Zonas" },
-												{ value: "differential", label: "Diferencial" },
-												{
-													value: "acceleration",
-													label: "Aceleración",
-													disabled: !accelerationAvailable,
-												},
-											]}
-										/>
-										{!accelerationAvailable && (
-											<p className="mt-1 text-xs text-slate-400">
-												Aceleración necesita al menos 4 fechas.
-											</p>
-										)}
-										<div className="mt-3 flex items-center gap-3">
-											<span className="text-xs text-slate-400">Opacidad</span>
-											<Slider
-												aria-label={`Opacidad de ${layer.name}`}
-												min={0}
-												max={1}
-												step={0.05}
-												value={[state.opacity]}
-												onValueChange={([v]) => onOpacity(layer.id, v)}
-											/>
-										</div>
-										<Legend
-											layer={layer}
-											view={view}
-											fieldLimit={fieldLimit}
-											zoneCount={zoneCount}
-										/>
-										<div className="mt-3 border-t border-white/10 pt-3">
-											<div className="flex items-center justify-between gap-3">
-												<label
-													htmlFor={`${id}-3d`}
-													className="flex items-center gap-1.5 text-sm font-semibold text-slate-100"
-												>
-													<Mountain className="size-3.5" aria-hidden />
-													Hundimiento 3D
-												</label>
-												<span className="flex items-center gap-1">
-													<InfoHint label="Hundimiento 3D">
-														<p>
-															Baja el terreno según el dato para que se vea la
-															forma del hundimiento.
-														</p>
-														<p>
-															Los centímetros reales serían invisibles a esta
-															escala, por eso se multiplican miles de veces. Las
-															alturas de este modo no son reales.
-														</p>
-													</InfoHint>
-													<Switch
-														id={`${id}-3d`}
-														checked={deform3d}
-														onCheckedChange={onDeform3d}
-													/>
-												</span>
-											</div>
-											{deform3d && (
-												<Segmented
-													label="Exageración"
-													value={deformFactor}
-													onChange={onDeformFactor}
-													options={DEFORM_FACTORS.map((f) => ({
-														value: f,
-														label: `×${f.toLocaleString("es-MX")}`,
-													}))}
-												/>
-											)}
-											<p className="mt-1.5 text-xs leading-relaxed text-slate-400">
-												Hunde la superficie según el dato, muy exagerado: solo
-												ilustrativo.
-											</p>
-										</div>
-									</>
-								)}
+							))}
+						</div>
+					)}
+					{displacement && (
+						<div className="mt-3 border-white/10 border-t px-1 pt-3">
+							<div className="flex items-center justify-between gap-3">
+								<label
+									htmlFor="deform-3d"
+									className="flex items-center gap-1.5 font-semibold text-slate-100 text-sm"
+								>
+									<Mountain className="size-3.5" aria-hidden />
+									Hundimiento 3D
+								</label>
+								<span className="flex items-center gap-1">
+									<InfoHint label="Hundimiento 3D">
+										<p>
+											Baja el terreno según el dato para que se vea la forma del
+											hundimiento.
+										</p>
+										<p>
+											Los centímetros reales serían invisibles a esta escala,
+											por eso se multiplican miles de veces. Las alturas de este
+											modo no son reales.
+										</p>
+									</InfoHint>
+									<Switch
+										id="deform-3d"
+										checked={deform3d}
+										onCheckedChange={onDeform3d}
+									/>
+								</span>
 							</div>
-						);
-					})}
-				</div>
+							{deform3d && (
+								<Segmented
+									label="Exageración"
+									value={deformFactor}
+									onChange={onDeformFactor}
+									options={DEFORM_FACTORS.map((f) => ({
+										value: f,
+										label: `×${f.toLocaleString("es-MX")}`,
+									}))}
+								/>
+							)}
+						</div>
+					)}
+				</>
 			)}
 		</Panel>
 	);
@@ -315,17 +371,55 @@ function Bar({
 	);
 }
 
+function RasterLegend({ layer }: { layer: Layer }) {
+	const [lo, hi] = layer.valueRange;
+	return (
+		<figure className="mt-3" aria-label={`Leyenda de ${layer.name}`}>
+			{layer.paint === "categorical" ? (
+				<ul className="space-y-1 text-slate-200 text-xs">
+					{layer.classes.map((c) => (
+						<li key={c.value} className="flex items-center gap-2">
+							<span
+								className="inline-block size-3 rounded-sm"
+								style={{ background: c.color }}
+							/>
+							{c.name}
+						</li>
+					))}
+				</ul>
+			) : (
+				<Bar
+					stops={gradient(PALETTES[layer.palette], layer.paint === "diverging")}
+					left={`${lo.toFixed(1)} ${layer.units}`}
+					right={`${hi.toFixed(1)} ${layer.units}`}
+				/>
+			)}
+			<figcaption className="mt-2 space-y-1 text-slate-400 text-xs leading-relaxed">
+				<p>{layer.description}</p>
+				{layer.referenceDate && (
+					<p>Dato de referencia: {layer.referenceDate.slice(0, 4)}.</p>
+				)}
+				<NoDataKey />
+			</figcaption>
+		</figure>
+	);
+}
+
 export function Legend({
-	layer,
-	view,
+	item,
+	displacement,
 	fieldLimit,
 	zoneCount,
 }: {
-	layer: Layer;
-	view: MapView;
+	item: CatalogItem;
+	displacement: Layer | null;
 	fieldLimit: number;
 	zoneCount: number;
 }) {
+	if (item.layer) return <RasterLegend layer={item.layer} />;
+	const view = item.view;
+	const layer = displacement;
+	if (!layer) return null;
 	const caption = "mt-2 space-y-1 text-xs leading-relaxed text-slate-400";
 
 	if (view === "zones") {

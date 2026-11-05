@@ -25,9 +25,16 @@ const CLICK_TOLERANCE_PX = 6;
 interface IsoCameraProps {
 	regionSize: number;
 	reducedMotion: boolean;
+	onPick: (col: number, row: number) => void;
 }
 
-export function IsoCamera({ regionSize, reducedMotion }: IsoCameraProps) {
+export function IsoCamera({
+	regionSize,
+	reducedMotion,
+	onPick,
+}: IsoCameraProps) {
+	const pickRef = useRef(onPick);
+	pickRef.current = onPick;
 	const flight = useFlight();
 	const cam = useRef<THREE.OrthographicCamera>(null);
 	const target = useRef(new THREE.Vector3());
@@ -82,7 +89,10 @@ export function IsoCamera({ regionSize, reducedMotion }: IsoCameraProps) {
 				flight.height,
 				DISTANCE * 2.5,
 			);
-			if (hit) flight.target = hit;
+			if (hit) {
+				flight.target = hit;
+				pickRef.current(hit.col, hit.row);
+			}
 		};
 		let down: { x: number; y: number; multi: boolean } | null = null;
 		const onWheel = (e: WheelEvent) => {

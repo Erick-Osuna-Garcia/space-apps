@@ -1,11 +1,10 @@
 import { Pause, Play } from "lucide-react";
 import { useEffect } from "react";
 import { Slider } from "#/components/ui/slider";
-import { elapsedText } from "../lib/friendly";
 import { InfoHint } from "./InfoHint";
 import { Panel } from "./Panel";
 
-const STEP_MS = 1100;
+const STEP_MS = 3000;
 
 const fmtDate = (iso: string) =>
 	new Date(`${iso}T12:00:00Z`).toLocaleDateString("es-MX", {
@@ -44,7 +43,6 @@ export function Timeline({
 		return () => window.clearInterval(id);
 	}, [playing, ready, onAdvance]);
 
-	const current = dates[Math.min(index, dates.length - 1)];
 	return (
 		<Panel className="flex w-full items-center gap-3 px-3 py-2.5 sm:gap-4 sm:px-4">
 			<button
@@ -60,22 +58,16 @@ export function Timeline({
 				)}
 			</button>
 			<div className="min-w-0 flex-1">
-				<div className="flex items-baseline justify-between gap-2">
-					<span
-						className="text-sm font-bold text-white tabular-nums"
-						aria-live="polite"
-					>
-						{fmtDate(current)}
+				<div className="flex items-center justify-between gap-2">
+					<span className="text-xs text-slate-400 tabular-nums">
+						Fecha {index + 1} de {dates.length}
 					</span>
-					<span className="flex items-center gap-1.5 text-xs text-slate-400 tabular-nums">
-						<span>{elapsedText(dates[0], current)}</span>
-						<InfoHint label="Línea de tiempo">
-							<p>
-								Cada punto es una pasada del satélite ({dates.length} fechas).
-								Mueve el control o presiona play para ver cómo cambia el suelo.
-							</p>
-						</InfoHint>
-					</span>
+					<InfoHint label="Línea de tiempo">
+						<p>
+							Cada punto es una pasada del satélite ({dates.length} fechas).
+							Mueve el control o presiona play para ver cómo cambia el suelo.
+						</p>
+					</InfoHint>
 				</div>
 				<Slider
 					className="mt-2"

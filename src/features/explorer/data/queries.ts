@@ -1,7 +1,9 @@
 import { queryOptions, skipToken } from "@tanstack/react-query";
+import type { Feature } from "../lib/infrastructure";
 import {
 	type Layer,
 	type Manifest,
+	type Overlay,
 	parseManifest,
 	type Region,
 } from "../manifest";
@@ -68,5 +70,46 @@ export const layerCubeQuery = (region: Region | null, layer: Layer | null) =>
 							layer.dates.length * region.width * region.height,
 						)
 				: skipToken,
+		...immutable,
+	});
+
+async function fetchRaster(
+	region: Region,
+	layer: Layer,
+): Promise<Int16Array | Uint8Array> {
+	const length = Math.max(layer.dates.length, 1) * region.width * region.height;
+	if (layer.encoding === "int16-le") return fetchBinary(layer.path, length);
+	const res = await fetch(`${DATA_BASE}/${layer.path}`);
+	if (!res.ok) {
+		throw new Error(`No se pudo cargar ${layer.path}: HTTP ${res.status}`);
+	}
+	const bytes = new Uint8Array(await res.arrayBuffer());
+	if (bytes.length !== length) {
+		throw new Error(`Tamaño inesperado en ${layer.path}`);
+	}
+	return bytes;
+}
+
+/** Capa raster bajo demanda; una capa estática tiene una sola banda. */
+export const rasterQuery = (region: Region | null, layer: Layer | null) =>
+	queryOptions({
+		queryKey: ["explorer", "raster", region?.id, layer?.id, layer?.path],
+		queryFn: region && layer ? () => fetchRaster(region, layer) : skipToken,
+		...immutable,
+	});
+
+async function fetchOverlay(overlay: Overlay): Promise<Feature[]> {
+	const res = await fetch(`${DATA_BASE}/${overlay.path}`);
+	if (!res.ok) {
+		throw new Error(`No se pudo cargar ${overlay.path}: HTTP ${res.status}`);
+	}
+	return res.json();
+}
+
+/** Tramos de una superposición vectorial. */
+export const overlayQuery = (overlay: Overlay | null) =>
+	queryOptions({
+		queryKey: ["explorer", "overlay", overlay?.path],
+		queryFn: overlay ? () => fetchOverlay(overlay) : skipToken,
 		...immutable,
 	});

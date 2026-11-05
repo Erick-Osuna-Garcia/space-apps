@@ -120,6 +120,37 @@ export interface Zone {
 	row: number;
 	valueCm: number;
 	meanVelocity: number | null;
+	/** Índices de sus celdas, para cruzarla con población y uso de suelo. */
+	cells: number[];
+}
+
+/** Personas y uso de suelo predominante dentro de una zona. */
+export function zoneContext(
+	zone: Pick<Zone, "cells">,
+	population: ArrayLike<number> | null,
+	landcover: ArrayLike<number> | null,
+	classNames: Record<number, string>,
+): { people: number | null; landUse: string | null } {
+	let people = 0;
+	const counts = new Map<number, number>();
+	for (const p of zone.cells) {
+		const v = population?.[p] ?? 0;
+		if (v > 0) people += v;
+		const c = landcover?.[p] ?? 0;
+		if (c > 1) counts.set(c, (counts.get(c) ?? 0) + 1);
+	}
+	let best = 0;
+	let bestCount = 0;
+	for (const [c, n] of counts) {
+		if (n > bestCount) {
+			best = c;
+			bestCount = n;
+		}
+	}
+	return {
+		people: population && people >= 1 ? people : null,
+		landUse: classNames[best] ?? null,
+	};
 }
 
 export interface ZoneMap {
@@ -204,6 +235,7 @@ export function zoneMap(
 			row: Math.floor(extreme / width) + 0.5,
 			valueCm: smoothed[extreme],
 			meanVelocity: vCount > 0 ? vSum / vCount : null,
+			cells: members,
 		});
 	}
 	zones.sort((a, b) => b.areaKm2 - a.areaKm2);

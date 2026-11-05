@@ -20,7 +20,10 @@ describe("parseManifest", () => {
 	it("omite capas de tipo desconocido con un aviso", () => {
 		const warn = vi.fn();
 		const m = parseManifest(fixture, warn);
-		expect(m.regions[0].layers.map((l) => l.id)).toEqual(["subsidence"]);
+		expect(m.regions[0].layers.map((l) => l.id)).toEqual([
+			"subsidence",
+			"landcover",
+		]);
 		expect(warn).toHaveBeenCalledOnce();
 		expect(warn.mock.calls[0][0]).toContain("backscatter-change");
 	});

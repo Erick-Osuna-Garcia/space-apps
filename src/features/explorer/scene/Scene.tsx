@@ -2,13 +2,17 @@ import { Stars } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import type { KeyAxes } from "../controls/useKeyboard";
+import type { Palette } from "../lib/colormap";
 import { gridToLonLat } from "../lib/grid";
 import type { Zone } from "../lib/impact";
+import type { Segment } from "../lib/infrastructure";
 import type { Layer, Region } from "../manifest";
 import type { ExplorerStore } from "../store";
 import { useFlight } from "./flight";
+import { Infrastructure } from "./Infrastructure";
 import { IsoCamera } from "./IsoCamera";
 import type { PaintModeValue } from "./layerMaterial";
+import { MotionArrows } from "./MotionArrows";
 import { PoiMarkers } from "./PoiMarkers";
 import { Ship } from "./Ship";
 import { Terrain } from "./Terrain";
@@ -56,7 +60,20 @@ export interface SceneProps {
 	paintMode: PaintModeValue;
 	field: Float32Array | null;
 	fieldLimit: number;
+	fieldMin: number;
+	palette: Palette;
 	bands: Uint8Array | null;
+	bandPalette: string[];
+	contour: boolean;
+	onPick: (col: number, row: number) => void;
+	overlays: Array<{
+		id: string;
+		kind: "road" | "canal";
+		segments: Segment[];
+		flags: Uint8Array;
+	}>;
+	/** Campo este-oeste cuando esa capa está activa, para dibujar flechas. */
+	arrows: Float32Array | null;
 	zones: Zone[];
 	zoneLabels: React.RefObject<Map<string, HTMLElement>>;
 	deformScale: number;
@@ -88,6 +105,7 @@ export function Scene(props: SceneProps) {
 			<IsoCamera
 				regionSize={Math.max(region.width, region.height)}
 				reducedMotion={props.reducedMotion}
+				onPick={props.onPick}
 			/>
 			<Terrain
 				region={region}
@@ -103,7 +121,11 @@ export function Scene(props: SceneProps) {
 				paintMode={props.paintMode}
 				field={props.field}
 				fieldLimit={props.fieldLimit}
+				fieldMin={props.fieldMin}
+				palette={props.palette}
 				bands={props.bands}
+				bandPalette={props.bandPalette}
+				contour={props.contour}
 				deformScale={props.deformScale}
 				deformCube={props.deformCube}
 			/>
@@ -112,6 +134,24 @@ export function Scene(props: SceneProps) {
 				heightAt={props.heightAt}
 				labels={props.labels}
 			/>
+			{props.overlays.map((o) => (
+				<Infrastructure
+					key={o.id}
+					segments={o.segments}
+					kind={o.kind}
+					flags={o.flags}
+					heightAt={props.heightAt}
+				/>
+			))}
+			{props.arrows && (
+				<MotionArrows
+					field={props.arrows}
+					width={region.width}
+					height={region.height}
+					limit={props.fieldLimit}
+					heightAt={props.heightAt}
+				/>
+			)}
 			<ZoneMarkers
 				zones={props.zones}
 				heightAt={props.heightAt}

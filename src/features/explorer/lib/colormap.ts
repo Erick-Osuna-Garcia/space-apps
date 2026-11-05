@@ -65,6 +65,27 @@ export function sequential(t: number): Rgb {
 	];
 }
 
+const ramp =
+	(from: Rgb, to: Rgb) =>
+	(t: number): Rgb => {
+		const x = Math.min(1, Math.max(0, t));
+		return [
+			from[0] + (to[0] - from[0]) * x,
+			from[1] + (to[1] - from[1]) * x,
+			from[2] + (to[2] - from[2]) * x,
+		];
+	};
+
+export type Palette = "vik" | "heat" | "gray" | "greens" | "blues";
+
+export const PALETTES: Record<Palette, (t: number) => Rgb> = {
+	vik,
+	heat: sequential,
+	gray: ramp([0.08, 0.08, 0.1], [0.96, 0.96, 0.96]),
+	greens: ramp([0.93, 0.93, 0.78], [0.03, 0.32, 0.14]),
+	blues: ramp([0.93, 0.88, 0.72], [0.03, 0.2, 0.5]),
+};
+
 /** LUT RGBA8 de `size` colores para subir como textura. */
 export function colormapLut(
 	size = 256,

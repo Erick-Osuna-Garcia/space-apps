@@ -1,19 +1,46 @@
-import { ExternalLink, TriangleAlert, X } from "lucide-react";
+import { ExternalLink, X } from "lucide-react";
 import type { Layer, Region } from "../manifest";
+import { InfoHint } from "./InfoHint";
 import { Panel, PanelTitle } from "./Panel";
 
-/** Aviso permanente cuando la capa activa no es una medición NISAR. */
+const SOURCE_NOTICE: Partial<
+	Record<Layer["source"], { label: string; help: string }>
+> = {
+	synthetic: {
+		label: "Datos simulados",
+		help: "Esta capa es una simulación de desarrollo: no son mediciones NISAR. Se reemplaza al generar la capa con datos NISAR reales.",
+	},
+	"sentinel-1": {
+		label: "Datos Sentinel-1",
+		help: "Esta capa viene de Sentinel-1 (ESA/Copernicus), no de NISAR.",
+	},
+	"esa-worldcover": {
+		label: "Fuente: ESA WorldCover",
+		help: "Mapa de cobertura de la ESA, no medido por NISAR.",
+	},
+	worldpop: {
+		label: "Fuente: WorldPop",
+		help: "Estimación de población de WorldPop; no es un censo ni viene de NISAR.",
+	},
+	derived: {
+		label: "Dato derivado",
+		help: "Calculado a partir de otros datos del explorador.",
+	},
+};
+
+/** Aviso discreto y permanente cuando la capa activa no es una medición NISAR. */
 export function DataNotice({ layer }: { layer: Layer | null }) {
-	if (!layer || layer.source === "nisar") return null;
-	const text =
-		layer.source === "synthetic"
-			? "Datos sintéticos de desarrollo, no son mediciones NISAR"
-			: "Capa derivada de Sentinel-1 (ESA/Copernicus), no de NISAR";
+	const notice = layer ? SOURCE_NOTICE[layer.source] : undefined;
+	if (!notice) return null;
 	return (
-		<output className="pointer-events-auto flex items-center gap-2 rounded-full border border-amber-300/50 bg-amber-950/85 px-3.5 py-1.5 text-xs font-bold text-amber-100 shadow-lg backdrop-blur-md sm:text-sm">
-			<TriangleAlert className="size-4 shrink-0 text-amber-300" aria-hidden />
-			{text}
-		</output>
+		<span className="pointer-events-auto mt-1.5 inline-flex items-center gap-1 text-[0.7rem] text-slate-300">
+			<output className="rounded-full border border-white/15 px-2 py-0.5 font-semibold">
+				{notice.label}
+			</output>
+			<InfoHint label={notice.label}>
+				<p>{notice.help}</p>
+			</InfoHint>
+		</span>
 	);
 }
 
@@ -96,14 +123,17 @@ export function ContextContent() {
 				</p>
 			</section>
 			<section>
-				<h3>Las vistas del mapa</h3>
+				<h3>Las capas del mapa</h3>
 				<p>
-					<strong>Zonas</strong> agrupa el terreno en áreas más bajas o más
-					altas que al inicio y marca su punto extremo.{" "}
-					<strong>Diferencial</strong> resalta dónde el terreno se dobla, que es
-					lo que suele afectar a caminos y canales. <strong>Aceleración</strong>{" "}
-					muestra dónde el hundimiento va más rápido o más lento que antes.
-					Señalan patrones; no evalúan daños ni riesgo.
+					<strong>Movimiento</strong>: cuánto y cómo se mueve el suelo,
+					incluidas las zonas, dónde se dobla el terreno, la separación vertical
+					y este-oeste, y los disturbios. <strong>Superficie</strong>:
+					construcción, vegetación y cambios, con las polarizaciones HH y HV.{" "}
+					<strong>Agua</strong>: agua en superficie y humedad del suelo.{" "}
+					<strong>Impacto</strong>: pendiente, población, uso de suelo y, sobre
+					cualquier capa, caminos y canales. Toca un punto para ver qué dice
+					cada capa de ese lugar. Estas capas señalan patrones y exposición; no
+					evalúan daños ni riesgo.
 				</p>
 			</section>
 			<section>
@@ -139,7 +169,14 @@ export function CreditsContent({
 	region: Region;
 	layer: Layer | null;
 }) {
-	const credits = [...region.terrain.credits, ...(layer?.credits ?? [])];
+	const all = [
+		...region.terrain.credits,
+		...(layer?.credits ?? []),
+		...region.overlays.flatMap((o) => o.credits),
+	];
+	const credits = all.filter(
+		(c, i) => all.findIndex((x) => x.name === c.name) === i,
+	);
 	return (
 		<div className="space-y-4">
 			<ul className="space-y-3">

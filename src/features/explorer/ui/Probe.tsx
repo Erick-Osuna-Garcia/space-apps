@@ -171,7 +171,7 @@ export function Probe({
 						)}
 					</>
 				)
-			) : (
+			) : reading ? null : (
 				<p className="mt-1.5 text-sm text-slate-400">
 					Aún no hay mediciones para esta capa aquí.
 				</p>

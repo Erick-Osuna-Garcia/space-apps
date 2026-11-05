@@ -7,6 +7,8 @@ interface TopBarProps {
 	exaggeration: number;
 	onOpenContext: () => void;
 	onOpenCredits: () => void;
+	/** Aviso de origen de los datos, bajo el nombre de la región. */
+	notice?: React.ReactNode;
 }
 
 export function TopBar({
@@ -14,6 +16,7 @@ export function TopBar({
 	exaggeration,
 	onOpenContext,
 	onOpenCredits,
+	notice,
 }: TopBarProps) {
 	return (
 		<div className="flex items-start justify-between gap-3">
@@ -31,6 +34,7 @@ export function TopBar({
 					<span className="mx-1.5 text-slate-600">·</span>
 					celda {Math.round(region.cellSizeM)} m
 				</p>
+				{notice}
 			</Panel>
 			<div className="pointer-events-auto flex gap-2">
 				<HudButton onClick={onOpenContext} label="Contexto">

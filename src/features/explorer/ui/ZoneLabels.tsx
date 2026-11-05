@@ -4,6 +4,8 @@ interface ZoneLabelsProps {
 	zones: Zone[];
 	labels: React.RefObject<Map<string, HTMLElement>>;
 	onSelect: (zone: Zone) => void;
+	/** Población y uso de suelo de cada zona, si ya están cargados. */
+	context: (zone: Zone) => { people: number | null; landUse: string | null };
 }
 
 const velocityText = (v: number | null) =>
@@ -11,8 +13,23 @@ const velocityText = (v: number | null) =>
 		? "velocidad no disponible"
 		: `${v > 0 ? "+" : ""}${v.toFixed(1)} cm/año`;
 
+function extraText(c: { people: number | null; landUse: string | null }) {
+	const parts: string[] = [];
+	if (c.people !== null) {
+		const rounded = Number(c.people.toPrecision(2));
+		parts.push(`≈ ${rounded.toLocaleString("es-MX")} personas`);
+	}
+	if (c.landUse) parts.push(`principalmente ${c.landUse.toLowerCase()}`);
+	return parts.join(" · ");
+}
+
 /** Etiquetas de las zonas principales; `ZoneMarkers` actualiza su posición cada cuadro. */
-export function ZoneLabels({ zones, labels, onSelect }: ZoneLabelsProps) {
+export function ZoneLabels({
+	zones,
+	labels,
+	onSelect,
+	context,
+}: ZoneLabelsProps) {
 	return (
 		<div className="pointer-events-none absolute inset-0 overflow-hidden">
 			{zones.map((zone, rank) => (
@@ -32,6 +49,11 @@ export function ZoneLabels({ zones, labels, onSelect }: ZoneLabelsProps) {
 					<span className="ml-1.5 text-slate-300 tabular-nums">
 						{velocityText(zone.meanVelocity)}
 					</span>
+					{extraText(context(zone)) && (
+						<span className="block font-normal text-[0.65rem] text-slate-300">
+							{extraText(context(zone))}
+						</span>
+					)}
 				</button>
 			))}
 		</div>

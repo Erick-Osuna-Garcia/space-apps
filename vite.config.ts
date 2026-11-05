@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
 
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -8,9 +8,25 @@ import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 import { nitro } from 'nitro/vite'
 
+/**
+ * En dev, Nitro comprime al vuelo con brotli a calidad máxima cada archivo de public/: el cubo
+ * de ~9 MB tardaba ~25 s en cada carga. En local no aporta nada, así que /data va sin comprimir.
+ */
+const rawDataInDev: Plugin = {
+  name: 'raw-data-in-dev',
+  enforce: 'pre',
+  configureServer(server) {
+    server.middlewares.use('/data', (req, _res, next) => {
+      delete req.headers['accept-encoding']
+      next()
+    })
+  },
+}
+
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
+    rawDataInDev,
     // Los elementos de React Three Fiber (<mesh>, <group>…) no son DOM: R3F interpreta el
     // atributo data-tsd-source como ruta de propiedades y truena.
     devtools({ injectSource: { enabled: true, ignore: { files: [/features\/explorer\/scene\//] } } }),

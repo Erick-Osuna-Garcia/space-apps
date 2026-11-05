@@ -45,6 +45,15 @@ describe("explorer store", () => {
 		expect(layerUi(store.state, "subsidence").visible).toBe(true);
 	});
 
+	it("cambiar de capa lleva la fecha y el inspector se limpia al cambiar de región", () => {
+		const store = createExplorerStore();
+		store.actions.setView("layer:hh", 3);
+		store.actions.setInspected({ col: 1, row: 2 });
+		expect(store.state).toMatchObject({ mapView: "layer:hh", dateIndex: 3 });
+		store.actions.setRegion("tijuana");
+		expect(store.state.inspected).toBeNull();
+	});
+
 	it("modos de análisis", () => {
 		const store = createExplorerStore();
 		expect(store.state).toMatchObject({

@@ -22,6 +22,10 @@ export interface ExplorerState {
 	warping: boolean;
 	/** Lo que muestra el mapa; una sola vista a la vez. */
 	mapView: MapView;
+	/** Punto tocado en el mapa para el inspector, en coordenadas de grilla. */
+	inspected: { col: number; row: number } | null;
+	/** Superposiciones vectoriales encendidas, por id. */
+	overlays: Record<string, boolean>;
 	/** Umbral de hundimiento (cm) para las estadísticas. */
 	statsThreshold: StatsThreshold;
 	/** Hundimiento 3D exagerado (design.md D13). */
@@ -36,7 +40,8 @@ export type MapView =
 	| "velocity"
 	| "zones"
 	| "differential"
-	| "acceleration";
+	| "acceleration"
+	| `layer:${string}`;
 export const STATS_THRESHOLDS = [2, 5, 10] as const;
 export type StatsThreshold = (typeof STATS_THRESHOLDS)[number];
 export const DEFORM_FACTORS = [2000, 5000, 10000] as const;
@@ -52,6 +57,8 @@ export const initialExplorerState = (regionId = "mexicali"): ExplorerState => ({
 	probe: null,
 	warping: false,
 	mapView: "cumulative",
+	inspected: null,
+	overlays: {},
 	statsThreshold: 5,
 	deform3d: true,
 	deformFactor: 10000,
@@ -73,6 +80,7 @@ export function createExplorerStore(initial = initialExplorerState()) {
 				dateIndex: 0,
 				playing: true,
 				probe: null,
+				inspected: null,
 			}));
 		},
 		setLayerVisible(layerId: string, visible: boolean) {
@@ -115,6 +123,16 @@ export function createExplorerStore(initial = initialExplorerState()) {
 		},
 		setMapView(mapView: MapView) {
 			setState((s) => ({ ...s, mapView }));
+		},
+		/** Cambia de capa llevando la línea de tiempo a la fecha equivalente. */
+		setView(mapView: MapView, dateIndex: number) {
+			setState((s) => ({ ...s, mapView, dateIndex: Math.max(dateIndex, 0) }));
+		},
+		setInspected(inspected: { col: number; row: number } | null) {
+			setState((s) => ({ ...s, inspected }));
+		},
+		setOverlay(id: string, on: boolean) {
+			setState((s) => ({ ...s, overlays: { ...s.overlays, [id]: on } }));
 		},
 		setStatsThreshold(statsThreshold: StatsThreshold) {
 			setState((s) => ({ ...s, statsThreshold }));
