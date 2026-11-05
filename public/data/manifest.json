@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-04T19:11:28Z",
+  "generatedAt": "2026-11-04T20:27:15Z",
   "projection": "EPSG:32611",
   "regions": [
     {
@@ -106,7 +106,7 @@
             "2026-10-20"
           ],
           "valueRange": [
-            -13.03,
+            -14.8,
             1.24
           ],
           "colormap": "diverging-vik",
