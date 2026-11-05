@@ -10,7 +10,15 @@ import {
 	useIsCompact,
 	usePrefersReducedMotion,
 } from "./hooks/useMedia";
-import { sampleBilinear } from "./lib/grid";
+import { cellIndex, sampleBilinear } from "./lib/grid";
+import {
+	accelerationReading,
+	createImpactAnalysis,
+	differentialReading,
+	MAX_LABELED_ZONES,
+	MIN_DATES_ACCELERATION,
+	zoneReading,
+} from "./lib/impact";
 import {
 	dateStats,
 	fillForDisplay,
@@ -19,9 +27,10 @@ import {
 } from "./lib/stats";
 import type { Poi, Region } from "./manifest";
 import { createFlight, FlightContext, teleport } from "./scene/flight";
+import { PaintMode } from "./scene/layerMaterial";
 import { Scene } from "./scene/Scene";
 import { DEFAULT_EXAGGERATION, verticalScale } from "./scene/terrainGeometry";
-import { explorerStore, layerUi } from "./store";
+import { explorerStore, layerUi, type MapView } from "./store";
 import { LayerPanel } from "./ui/LayerPanel";
 import {
 	ContextContent,
@@ -39,6 +48,7 @@ import { Probe } from "./ui/Probe";
 import { StatsPanel } from "./ui/StatsPanel";
 import { Timeline } from "./ui/Timeline";
 import { TopBar } from "./ui/TopBar";
+import { ZoneLabels } from "./ui/ZoneLabels";
 
 const fmtShortDate = (iso: string) =>
 	new Date(`${iso}T12:00:00Z`).toLocaleDateString("es-MX", {
@@ -47,6 +57,15 @@ const fmtShortDate = (iso: string) =>
 		year: "numeric",
 		timeZone: "UTC",
 	});
+
+function timelineNote(view: MapView, deform3d: boolean) {
+	if (view !== "velocity" && view !== "acceleration") return undefined;
+	const base =
+		view === "velocity"
+			? "La velocidad no depende de la fecha: es la tendencia de toda la serie."
+			: "La aceleración no depende de la fecha: compara las dos mitades de la serie.";
+	return deform3d ? `${base} El relieve 3D sí sigue la fecha.` : base;
+}
 
 const WARP_OUT_MS = 450;
 const WARP_IN_MS = 400;
@@ -80,6 +99,7 @@ function ExplorerScene() {
 	const compact = useIsCompact();
 	const keys = useKeyboard();
 	const labels = useRef(new Map<string, HTMLElement>());
+	const zoneLabels = useRef(new Map<string, HTMLElement>());
 	const flight = useMemo(createFlight, []);
 	const [layersOpen, setLayersOpen] = useState(false);
 
@@ -140,6 +160,59 @@ function ExplorerScene() {
 			state.statsThreshold,
 		],
 	);
+
+	// Vistas de impacto: lo que pinta el mapa según el selector.
+	const impact = useMemo(
+		() =>
+			region && timelineLayer && activeCube && velocity
+				? createImpactAnalysis(
+						activeCube,
+						{
+							width: region.width,
+							height: region.height,
+							dates: timelineLayer.dates,
+							scale: timelineLayer.scale,
+							nodata: timelineLayer.nodata,
+						},
+						velocity,
+						region.cellSizeM,
+					)
+				: null,
+		[region, timelineLayer, activeCube, velocity],
+	);
+	const accelerationAvailable =
+		(timelineLayer?.dates.length ?? 0) >= MIN_DATES_ACCELERATION;
+	const view =
+		state.mapView === "acceleration" && !accelerationAvailable
+			? "cumulative"
+			: state.mapView;
+	const zoneData =
+		view === "zones" ? (impact?.zones(state.dateIndex) ?? null) : null;
+	const zones = zoneData?.zones.slice(0, MAX_LABELED_ZONES) ?? [];
+	const field =
+		view === "velocity"
+			? velocity
+			: view === "differential"
+				? (impact?.differential(state.dateIndex) ?? null)
+				: view === "acceleration"
+					? (impact?.acceleration() ?? null)
+					: null;
+	const fieldLimit =
+		view === "velocity"
+			? velocityLimit
+			: view === "differential"
+				? (impact?.differentialLimit() ?? 1)
+				: view === "acceleration"
+					? (impact?.accelerationLimit() ?? 1)
+					: 1;
+	const paintMode =
+		view === "zones"
+			? PaintMode.BANDS
+			: view === "differential"
+				? PaintMode.FIELD_SEQUENTIAL
+				: view === "velocity" || view === "acceleration"
+					? PaintMode.FIELD_DIVERGING
+					: PaintMode.CUBE;
 
 	// Hundimiento 3D (D13): unidades de escena por cm, ×N respecto a la escala horizontal.
 	const deformScale =
@@ -238,6 +311,12 @@ function ExplorerScene() {
 		[flight, reducedMotion],
 	);
 
+	// Con movimiento reducido no arranca sola (ni al cambiar de región).
+	// biome-ignore lint/correctness/useExhaustiveDependencies: region?.id es el disparador
+	useEffect(() => {
+		if (reducedMotion) store.actions.setPlaying(false);
+	}, [reducedMotion, region?.id]);
+
 	const advance = useCallback(
 		() => store.actions.advanceDate(timelineLayer?.dates.length ?? 0),
 		[timelineLayer],
@@ -252,6 +331,20 @@ function ExplorerScene() {
 	}
 	if (!manifest.data || !region)
 		return <ExplorerLoading label="Cargando datos de NISAR…" />;
+
+	const probeCell = state.probe
+		? cellIndex(region.width, region.height, state.probe.col, state.probe.row)
+		: -1;
+	const reading =
+		probeCell < 0
+			? null
+			: zoneData
+				? zoneReading(zoneData.bands[probeCell])
+				: view === "differential" && field
+					? differentialReading(field[probeCell])
+					: view === "acceleration" && field
+						? accelerationReading(field[probeCell])
+						: null;
 
 	const sceneReady = terrain.data && readyRegion === region.id;
 	const ui = activeLayer ? layerUi(state, activeLayer.id) : null;
@@ -277,9 +370,12 @@ function ExplorerScene() {
 								dateIndex={state.dateIndex}
 								reducedMotion={reducedMotion}
 								heightAt={heightAt}
-								velocity={velocity}
-								velocityLimit={velocityLimit}
-								colorMode={state.colorMode}
+								paintMode={paintMode}
+								field={field}
+								fieldLimit={fieldLimit}
+								bands={zoneData?.bands ?? null}
+								zones={zones}
+								zoneLabels={zoneLabels}
 								deformScale={deformScale}
 								deformCube={deformCube}
 								keys={keys}
@@ -293,6 +389,15 @@ function ExplorerScene() {
 							pois={region.pois}
 							labels={labels}
 							onSelect={(poi) => goTo(region, poi)}
+						/>
+					)}
+					{sceneReady && (
+						<ZoneLabels
+							zones={zones}
+							labels={zoneLabels}
+							onSelect={(zone) => {
+								flight.target = { col: zone.col, row: zone.row };
+							}}
 						/>
 					)}
 					{!sceneReady && (
@@ -379,9 +484,11 @@ function ExplorerScene() {
 											ui={(id) => layerUi(state, id)}
 											onVisible={store.actions.setLayerVisible}
 											onOpacity={store.actions.setLayerOpacity}
-											colorMode={state.colorMode}
-											onColorMode={store.actions.setColorMode}
-											velocityLimit={velocityLimit}
+											view={view}
+											onView={store.actions.setMapView}
+											fieldLimit={fieldLimit}
+											zoneCount={zoneData?.zones.length ?? 0}
+											accelerationAvailable={accelerationAvailable}
 											deform3d={state.deform3d}
 											deformFactor={state.deformFactor}
 											onDeform3d={store.actions.setDeform3d}
@@ -415,7 +522,10 @@ function ExplorerScene() {
 							probe={state.probe}
 							dateIndex={state.dateIndex}
 							compact={compact}
-							mode={state.colorMode}
+							mode={view === "velocity" ? "velocity" : "cumulative"}
+							reading={reading}
+							loading={Boolean(activeLayer) && cube.isPending}
+							failed={Boolean(activeLayer) && cube.isError}
 						/>
 						<div className="flex min-w-0 flex-1 flex-col items-center gap-2">
 							{timelineLayer && (
@@ -427,11 +537,10 @@ function ExplorerScene() {
 										onSelect={store.actions.selectDate}
 										onPlaying={store.actions.setPlaying}
 										onAdvance={advance}
+										ready={Boolean(activeCube)}
 										note={
-											state.colorMode === "velocity" && activeLayer
-												? state.deform3d
-													? "El color muestra la velocidad (no depende de la fecha); el relieve 3D sí sigue la fecha."
-													: "La velocidad no depende de la fecha: es la tendencia de toda la serie."
+											activeLayer
+												? timelineNote(view, state.deform3d)
 												: undefined
 										}
 									/>
@@ -449,6 +558,20 @@ function ExplorerScene() {
 							)}
 							<ControlsHint compact={compact} />
 						</div>
+						{timelineLayer && (
+							<output className="pointer-events-auto self-end rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-2.5 text-right shadow-2xl backdrop-blur-md">
+								<span className="block font-bold text-[0.68rem] text-slate-400 uppercase tracking-[0.16em]">
+									Fecha:
+								</span>
+								<span className="block whitespace-nowrap font-extrabold text-white text-xl tabular-nums sm:text-2xl">
+									{fmtShortDate(
+										timelineLayer.dates[
+											Math.min(state.dateIndex, timelineLayer.dates.length - 1)
+										],
+									)}
+								</span>
+							</output>
+						)}
 					</div>
 				</div>
 			</div>

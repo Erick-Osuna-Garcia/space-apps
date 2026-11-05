@@ -3,13 +3,16 @@ import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import type { KeyAxes } from "../controls/useKeyboard";
 import { gridToLonLat } from "../lib/grid";
+import type { Zone } from "../lib/impact";
 import type { Layer, Region } from "../manifest";
 import type { ExplorerStore } from "../store";
 import { useFlight } from "./flight";
 import { IsoCamera } from "./IsoCamera";
+import type { PaintModeValue } from "./layerMaterial";
 import { PoiMarkers } from "./PoiMarkers";
 import { Ship } from "./Ship";
 import { Terrain } from "./Terrain";
+import { ZoneMarkers } from "./ZoneMarkers";
 
 const PROBE_INTERVAL_S = 0.1;
 
@@ -50,9 +53,12 @@ export interface SceneProps {
 	dateIndex: number;
 	reducedMotion: boolean;
 	heightAt: (col: number, row: number) => number;
-	velocity: Float32Array | null;
-	velocityLimit: number;
-	colorMode: "cumulative" | "velocity";
+	paintMode: PaintModeValue;
+	field: Float32Array | null;
+	fieldLimit: number;
+	bands: Uint8Array | null;
+	zones: Zone[];
+	zoneLabels: React.RefObject<Map<string, HTMLElement>>;
 	deformScale: number;
 	deformCube: Float32Array | null;
 	keys: React.RefObject<KeyAxes>;
@@ -94,9 +100,10 @@ export function Scene(props: SceneProps) {
 				opacity={props.layerOpacity}
 				dateIndex={props.dateIndex}
 				reducedMotion={props.reducedMotion}
-				velocity={props.velocity}
-				velocityLimit={props.velocityLimit}
-				colorMode={props.colorMode}
+				paintMode={props.paintMode}
+				field={props.field}
+				fieldLimit={props.fieldLimit}
+				bands={props.bands}
 				deformScale={props.deformScale}
 				deformCube={props.deformCube}
 			/>
@@ -104,6 +111,11 @@ export function Scene(props: SceneProps) {
 				pois={region.pois}
 				heightAt={props.heightAt}
 				labels={props.labels}
+			/>
+			<ZoneMarkers
+				zones={props.zones}
+				heightAt={props.heightAt}
+				labels={props.zoneLabels}
 			/>
 			<Ship keys={props.keys} reducedMotion={props.reducedMotion} />
 			<ProbePublisher region={region} store={props.store} />

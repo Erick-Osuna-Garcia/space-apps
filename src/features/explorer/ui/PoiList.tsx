@@ -1,6 +1,7 @@
 import { cn } from "cn";
 import { MapPin, Rocket } from "lucide-react";
 import type { Manifest, Poi, Region } from "../manifest";
+import { InfoHint } from "./InfoHint";
 import { Panel, PanelTitle } from "./Panel";
 
 interface PoiListProps {
@@ -50,7 +51,15 @@ export function PoiList({
 
 	return (
 		<Panel className="w-64 p-3">
-			<PanelTitle className="px-1">Destinos</PanelTitle>
+			<div className="flex items-center justify-between px-1">
+				<PanelTitle>Destinos</PanelTitle>
+				<InfoHint label="Destinos">
+					<p>
+						Lugares para visitar. El pin amarillo vuela a un punto de esta
+						región; el cohete hace un salto (warp) a otra región.
+					</p>
+				</InfoHint>
+			</div>
 			<ul className="mt-2 space-y-1">
 				{items.map(({ region, poi }) => {
 					const here = region.id === activeRegionId;

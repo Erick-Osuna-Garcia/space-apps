@@ -1,7 +1,17 @@
 import * as THREE from "three";
-import { colormapLut } from "../lib/colormap";
+import { colormapLut, sequential } from "../lib/colormap";
+import { BAND_COLORS } from "../lib/impact";
 
 export const NODATA_SENTINEL = -9999;
+
+/** Cómo pinta el shader la capa. */
+export const PaintMode = {
+	CUBE: 0,
+	FIELD_DIVERGING: 1,
+	FIELD_SEQUENTIAL: 2,
+	BANDS: 3,
+} as const;
+export type PaintModeValue = (typeof PaintMode)[keyof typeof PaintMode];
 
 export interface LayerUniforms {
 	uCube: { value: THREE.DataArrayTexture };
@@ -13,10 +23,14 @@ export interface LayerUniforms {
 	uLimit: { value: number };
 	uLayerOn: { value: number };
 	uNoData: { value: THREE.Color };
-	/** 0 = acumulado (cubo por fecha), 1 = velocidad (cm/año). */
+	/** Ver `PaintMode`. */
 	uMode: { value: number };
-	uVelocity: { value: THREE.DataTexture };
-	uVelLimit: { value: number };
+	/** Campo 2D de la vista activa (velocidad, diferencial o aceleración). */
+	uField: { value: THREE.DataTexture };
+	uFieldLimit: { value: number };
+	uLutSeq: { value: THREE.DataTexture };
+	uBands: { value: THREE.DataTexture };
+	uBandColors: { value: THREE.Color[] };
 	/** Unidades de escena por cm de desplazamiento (0 = sin hundimiento 3D). */
 	uDeform: { value: number };
 	/** Cubo (cm) solo para la geometría, con huecos rellenados (0 = sin desplazamiento). */
@@ -48,22 +62,38 @@ function floatTexture(data: Float32Array, width: number, height: number) {
 	return t;
 }
 
-/** Campo de velocidad (cm/año, NaN = sin dato) como textura 2D. */
-export function velocityTexture(
-	velocity: Float32Array,
+/** Campo de una vista (NaN = sin dato) como textura 2D. */
+export function fieldTexture(
+	field: Float32Array,
 	width: number,
 	height: number,
 ) {
-	const data = new Float32Array(velocity.length);
-	for (let k = 0; k < velocity.length; k++) {
-		const v = velocity[k];
+	const data = new Float32Array(field.length);
+	for (let k = 0; k < field.length; k++) {
+		const v = field[k];
 		data[k] = Number.isFinite(v) ? v : NODATA_SENTINEL;
 	}
 	return floatTexture(data, width, height);
 }
 
-function lutTexture() {
-	const t = new THREE.DataTexture(colormapLut(256), 256, 1, THREE.RGBAFormat);
+/** Bandas de la vista Zonas (un byte por celda). */
+export function bandsTexture(bands: Uint8Array, width: number, height: number) {
+	const t = new THREE.DataTexture(
+		bands,
+		width,
+		height,
+		THREE.RedFormat,
+		THREE.UnsignedByteType,
+	);
+	t.minFilter = THREE.NearestFilter;
+	t.magFilter = THREE.NearestFilter;
+	t.unpackAlignment = 1;
+	t.needsUpdate = true;
+	return t;
+}
+
+function lutTexture(data = colormapLut(256)) {
+	const t = new THREE.DataTexture(data, 256, 1, THREE.RGBAFormat);
 	t.colorSpace = THREE.SRGBColorSpace;
 	t.magFilter = THREE.LinearFilter;
 	t.minFilter = THREE.LinearFilter;
@@ -132,8 +162,11 @@ export function createLayerUniforms(): LayerUniforms {
 		uLayerOn: { value: 0 },
 		uNoData: { value: new THREE.Color("#6f6a75") },
 		uMode: { value: 0 },
-		uVelocity: { value: floatTexture(new Float32Array([0]), 1, 1) },
-		uVelLimit: { value: 10 },
+		uField: { value: floatTexture(new Float32Array([0]), 1, 1) },
+		uFieldLimit: { value: 10 },
+		uLutSeq: { value: lutTexture(colormapLut(256, sequential)) },
+		uBands: { value: bandsTexture(new Uint8Array([1]), 1, 1) },
+		uBandColors: { value: BAND_COLORS.map((c) => new THREE.Color(c)) },
 		uDeform: { value: 0 },
 		uDeformCube: { value: emptyCube() },
 		uTexel: { value: new THREE.Vector2(1, 1) },
@@ -191,40 +224,67 @@ if (uDeform > 0.0) transformed.y += dispAt(gridUv) * uDeform;`,
 precision highp sampler2DArray;
 uniform sampler2DArray uCube;
 uniform sampler2D uLut;
-uniform sampler2D uVelocity;
-uniform float uDateA, uDateB, uMix, uOpacity, uLimit, uLayerOn, uMode, uVelLimit;
+uniform sampler2D uField;
+uniform sampler2D uLutSeq;
+uniform sampler2D uBands;
+uniform vec3 uBandColors[6];
+uniform vec2 uTexel;
+uniform float uDateA, uDateB, uMix, uOpacity, uLimit, uLayerOn, uMode, uFieldLimit;
 uniform vec3 uNoData;
-varying vec2 vGridUv;`,
+varying vec2 vGridUv;
+int bandAt(vec2 uv) {
+  return int(texture(uBands, uv).r * 255.0 + 0.5);
+}
+// borde entre dos bandas, de ~1.5 px de grosor a cualquier zoom (ignora "sin dato")
+bool onContour(vec2 uv, int band, vec2 w) {
+  vec2 f = fract(uv / uTexel);
+  vec2 d = vec2(0.0);
+  if (f.x < w.x) d = vec2(-uTexel.x, 0.0);
+  else if (f.x > 1.0 - w.x) d = vec2(uTexel.x, 0.0);
+  int nx = bandAt(uv + d);
+  d = vec2(0.0);
+  if (f.y < w.y) d = vec2(0.0, -uTexel.y);
+  else if (f.y > 1.0 - w.y) d = vec2(0.0, uTexel.y);
+  int ny = bandAt(uv + d);
+  return (nx != band && nx != 0) || (ny != band && ny != 0);
+}`,
 			)
 			.replace(
 				"#include <color_fragment>",
 				`#include <color_fragment>
-if (uLayerOn > 0.5) {
+if (uLayerOn > 0.5 && uMode > 2.5) {
+  vec2 lineWidth = fwidth(vGridUv / uTexel) * 1.5;
+  int band = bandAt(vGridUv);
+  if (band == 0) diffuseColor.rgb = mix(diffuseColor.rgb, uNoData, uOpacity);
+  else {
+    if (band != 1) diffuseColor.rgb = mix(diffuseColor.rgb, uBandColors[band], uOpacity);
+    if (onContour(vGridUv, band, lineWidth)) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), 0.9);
+  }
+} else if (uLayerOn > 0.5) {
   vec3 layerColor;
   float v;
-  float limit;
   bool nodata;
+  float t;
   if (uMode > 0.5) {
-    v = texture(uVelocity, vGridUv).r;
-    limit = uVelLimit;
+    v = texture(uField, vGridUv).r;
     nodata = v < ${NODATA_SENTINEL.toFixed(1)} + 1.0;
+    t = uMode > 1.5
+      ? clamp(v / uFieldLimit, 0.0, 1.0)
+      : clamp(0.5 - v / (2.0 * uFieldLimit), 0.0, 1.0);
   } else {
     float a = texture(uCube, vec3(vGridUv, uDateA)).r;
     float b = texture(uCube, vec3(vGridUv, uDateB)).r;
     v = mix(a, b, uMix);
-    limit = uLimit;
     nodata = a < ${NODATA_SENTINEL.toFixed(1)} + 1.0 || b < ${NODATA_SENTINEL.toFixed(1)} + 1.0;
+    t = clamp(0.5 - v / (2.0 * uLimit), 0.0, 1.0);
   }
-  if (nodata) {
-    layerColor = uNoData;
-  } else {
-    float t = clamp(0.5 - v / (2.0 * limit), 0.0, 1.0);
-    layerColor = texture(uLut, vec2(t, 0.5)).rgb;
-  }
+  if (nodata) layerColor = uNoData;
+  else if (uMode > 1.5) layerColor = texture(uLutSeq, vec2(t, 0.5)).rgb;
+  else layerColor = texture(uLut, vec2(t, 0.5)).rgb;
   diffuseColor.rgb = mix(diffuseColor.rgb, layerColor, uOpacity);
 }`,
 			);
 	};
-	material.customProgramCacheKey = () => "terrain-layer-v3";
+	material.customProgramCacheKey = () => "terrain-layer-v5";
 	return material;
 }

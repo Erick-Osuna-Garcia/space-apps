@@ -4,11 +4,14 @@ import * as THREE from "three";
 import { symmetricLimit } from "../lib/colormap";
 import type { Layer, Region } from "../manifest";
 import {
+	bandsTexture,
 	createLayerUniforms,
 	createTerrainMaterial,
 	cubeTexture,
 	deformCubeTexture,
-	velocityTexture,
+	fieldTexture,
+	PaintMode,
+	type PaintModeValue,
 } from "./layerMaterial";
 import { buildTerrain } from "./terrainGeometry";
 
@@ -25,10 +28,11 @@ interface TerrainProps {
 	opacity: number;
 	dateIndex: number;
 	reducedMotion: boolean;
-	/** Campo de velocidad (cm/año) y su límite de color; null = aún no calculado. */
-	velocity: Float32Array | null;
-	velocityLimit: number;
-	colorMode: "cumulative" | "velocity";
+	/** Qué pinta la capa; si faltan sus datos se cae al acumulado. */
+	paintMode: PaintModeValue;
+	field: Float32Array | null;
+	fieldLimit: number;
+	bands: Uint8Array | null;
 	/** Unidades de escena por cm de desplazamiento; 0 = sin hundimiento 3D. */
 	deformScale: number;
 	/** Cubo de geometría (cm) con huecos rellenados; null = sin hundimiento 3D. */
@@ -46,9 +50,10 @@ export function Terrain({
 	opacity,
 	dateIndex,
 	reducedMotion,
-	velocity,
-	velocityLimit,
-	colorMode,
+	paintMode,
+	field,
+	fieldLimit,
+	bands,
 	deformScale,
 	deformCube,
 }: TerrainProps) {
@@ -76,7 +81,9 @@ export function Terrain({
 			skirtMaterial.dispose();
 			uniforms.uLut.value.dispose();
 			uniforms.uCube.value.dispose();
-			uniforms.uVelocity.value.dispose();
+			uniforms.uLutSeq.value.dispose();
+			uniforms.uField.value.dispose();
+			uniforms.uBands.value.dispose();
 			uniforms.uDeformCube.value.dispose();
 		},
 		[material, skirtMaterial, uniforms],
@@ -114,17 +121,20 @@ export function Terrain({
 		);
 	}, [deformCube, layer, region, uniforms]);
 
-	// Campo de velocidad (modo velocidad).
+	// Campo de la vista activa (velocidad, diferencial o aceleración).
 	useEffect(() => {
-		if (!velocity) return;
-		uniforms.uVelocity.value.dispose();
-		uniforms.uVelocity.value = velocityTexture(
-			velocity,
-			region.width,
-			region.height,
-		);
-		uniforms.uVelLimit.value = velocityLimit;
-	}, [velocity, velocityLimit, region, uniforms]);
+		if (!field) return;
+		uniforms.uField.value.dispose();
+		uniforms.uField.value = fieldTexture(field, region.width, region.height);
+		uniforms.uFieldLimit.value = fieldLimit;
+	}, [field, fieldLimit, region, uniforms]);
+
+	// Bandas de la vista Zonas.
+	useEffect(() => {
+		if (!bands) return;
+		uniforms.uBands.value.dispose();
+		uniforms.uBands.value = bandsTexture(bands, region.width, region.height);
+	}, [bands, region, uniforms]);
 
 	// Transición suave entre fechas: A = lo que se ve ahora, B = la fecha nueva.
 	useEffect(() => {
@@ -140,7 +150,8 @@ export function Terrain({
 		const on = Boolean(visible && layer && cube);
 		uniforms.uLayerOn.value = on ? 1 : 0;
 		uniforms.uOpacity.value = opacity;
-		uniforms.uMode.value = colorMode === "velocity" && velocity ? 1 : 0;
+		const ready = paintMode === PaintMode.BANDS ? bands : field;
+		uniforms.uMode.value = ready ? paintMode : PaintMode.CUBE;
 		uniforms.uDeform.value = on && deformCube ? deformScale : 0;
 		if (uniforms.uMix.value < 1) {
 			uniforms.uMix.value = Math.min(

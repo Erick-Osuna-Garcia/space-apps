@@ -20,8 +20,8 @@ export interface ExplorerState {
 	playing: boolean;
 	probe: ProbeReading | null;
 	warping: boolean;
-	/** Coloración de la capa: acumulado a la fecha o velocidad (cm/año). */
-	colorMode: ColorMode;
+	/** Lo que muestra el mapa; una sola vista a la vez. */
+	mapView: MapView;
 	/** Umbral de hundimiento (cm) para las estadísticas. */
 	statsThreshold: StatsThreshold;
 	/** Hundimiento 3D exagerado (design.md D13). */
@@ -31,7 +31,12 @@ export interface ExplorerState {
 	creditsOpen: boolean;
 }
 
-export type ColorMode = "cumulative" | "velocity";
+export type MapView =
+	| "cumulative"
+	| "velocity"
+	| "zones"
+	| "differential"
+	| "acceleration";
 export const STATS_THRESHOLDS = [2, 5, 10] as const;
 export type StatsThreshold = (typeof STATS_THRESHOLDS)[number];
 export const DEFORM_FACTORS = [2000, 5000, 10000] as const;
@@ -43,13 +48,13 @@ export const initialExplorerState = (regionId = "mexicali"): ExplorerState => ({
 	regionId,
 	layers: {},
 	dateIndex: 0,
-	playing: false,
+	playing: true,
 	probe: null,
 	warping: false,
-	colorMode: "cumulative",
+	mapView: "cumulative",
 	statsThreshold: 5,
-	deform3d: false,
-	deformFactor: 5000,
+	deform3d: true,
+	deformFactor: 10000,
 	contextOpen: false,
 	creditsOpen: false,
 });
@@ -66,7 +71,7 @@ export function createExplorerStore(initial = initialExplorerState()) {
 				...s,
 				regionId,
 				dateIndex: 0,
-				playing: false,
+				playing: true,
 				probe: null,
 			}));
 		},
@@ -108,8 +113,8 @@ export function createExplorerStore(initial = initialExplorerState()) {
 		setProbe(probe: ProbeReading | null) {
 			setState((s) => ({ ...s, probe }));
 		},
-		setColorMode(colorMode: ColorMode) {
-			setState((s) => ({ ...s, colorMode }));
+		setMapView(mapView: MapView) {
+			setState((s) => ({ ...s, mapView }));
 		},
 		setStatsThreshold(statsThreshold: StatsThreshold) {
 			setState((s) => ({ ...s, statsThreshold }));

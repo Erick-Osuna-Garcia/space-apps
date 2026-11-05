@@ -1,6 +1,13 @@
 import { BarChart3, Plane } from "lucide-react";
+import {
+	areaComparison,
+	sizeComparison,
+	TREND_LABELS,
+	trendLevel,
+} from "../lib/friendly";
 import type { DateStats } from "../lib/stats";
 import { STATS_THRESHOLDS, type StatsThreshold } from "../store";
+import { InfoHint } from "./InfoHint";
 import { Segmented } from "./LayerPanel";
 import { Panel, PanelTitle } from "./Panel";
 
@@ -27,11 +34,24 @@ export function StatsPanel({
 	onFlyToMax,
 	compact,
 }: StatsPanelProps) {
+	const size = sizeComparison(stats.maxSubsidence);
+	const maxText = size ? `Tamaño del cambio: ${size}` : null;
+	const areaText = areaComparison(stats.areaKm2);
 	return (
 		<Panel className={compact ? "w-full p-3" : "w-64 p-3"}>
-			<PanelTitle className="flex items-center gap-1.5 px-1">
-				<BarChart3 className="size-3.5" aria-hidden /> Estadísticas
-			</PanelTitle>
+			<div className="flex items-center justify-between px-1">
+				<PanelTitle className="flex items-center gap-1.5">
+					<BarChart3 className="size-3.5" aria-hidden /> Resumen de la zona
+				</PanelTitle>
+				<InfoHint label="Resumen de la zona">
+					<p>
+						Los números de toda la región en la fecha elegida: dónde se hundió
+						más, cuánto terreno pasó del límite que elijas abajo y a qué ritmo
+						baja esa zona.
+					</p>
+					<p>Las zonas sin dato no se cuentan.</p>
+				</InfoHint>
+			</div>
 			<p className="mt-0.5 px-1 text-[0.7rem] text-slate-500 tabular-nums">
 				a la fecha {date}
 			</p>
@@ -54,6 +74,7 @@ export function StatsPanel({
 							</button>
 						)}
 					</dd>
+					{maxText && <dd className="text-xs text-slate-400">{maxText}</dd>}
 				</div>
 				<div>
 					<dt className="text-xs text-slate-400">
@@ -62,6 +83,7 @@ export function StatsPanel({
 					<dd className="text-lg font-extrabold text-white tabular-nums">
 						{num(stats.areaKm2)} km²
 					</dd>
+					{areaText && <dd className="text-xs text-slate-400">{areaText}</dd>}
 				</div>
 				<div>
 					<dt className="text-xs text-slate-400">
@@ -72,6 +94,11 @@ export function StatsPanel({
 							? "no disponible"
 							: `${num(stats.meanVelocity)} cm/año`}
 					</dd>
+					{stats.meanVelocity !== null && (
+						<dd className="text-xs text-slate-400">
+							{TREND_LABELS[trendLevel(stats.meanVelocity)]}
+						</dd>
+					)}
 				</div>
 			</dl>
 			<Segmented

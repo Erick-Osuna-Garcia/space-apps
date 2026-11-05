@@ -90,8 +90,20 @@ export function ContextContent() {
 					que el suelo se alejó del satélite, casi siempre por hundimiento. El
 					gris marca zonas donde el radar perdió coherencia (agua, cultivos que
 					cambian mucho) y no hay dato confiable. La altura del relieve está
-					exagerada ×3 para que se lea en vista isométrica; la deformación se
-					muestra solo con color.
+					exagerada ×3 para que se lea en vista isométrica, y el hundimiento se
+					exagera miles de veces para poder verlo: es ilustrativo. El dato real
+					es el color y los centímetros de la sonda.
+				</p>
+			</section>
+			<section>
+				<h3>Las vistas del mapa</h3>
+				<p>
+					<strong>Zonas</strong> agrupa el terreno en áreas más bajas o más
+					altas que al inicio y marca su punto extremo.{" "}
+					<strong>Diferencial</strong> resalta dónde el terreno se dobla, que es
+					lo que suele afectar a caminos y canales. <strong>Aceleración</strong>{" "}
+					muestra dónde el hundimiento va más rápido o más lento que antes.
+					Señalan patrones; no evalúan daños ni riesgo.
 				</p>
 			</section>
 			<section>

@@ -2,24 +2,62 @@ import { cn } from "cn";
 import { Layers, Mountain } from "lucide-react";
 import { Slider } from "#/components/ui/slider";
 import { Switch } from "#/components/ui/switch";
-import { symmetricLimit, toCss, vik } from "../lib/colormap";
+import { sequential, symmetricLimit, toCss, vik } from "../lib/colormap";
+import { BAND_COLORS, BAND_NAMES, Band } from "../lib/impact";
 import type { Layer, Region } from "../manifest";
 import {
-	type ColorMode,
 	DEFORM_FACTORS,
 	type DeformFactor,
 	type LayerUiState,
+	type MapView,
 } from "../store";
+import { InfoHint } from "./InfoHint";
 import { Panel, PanelTitle } from "./Panel";
+
+const VIEW_HELP: Record<MapView, { title: string; text: string[] }> = {
+	cumulative: {
+		title: "Acumulado",
+		text: ["Cuánto se movió el suelo desde la primera fecha hasta la elegida."],
+	},
+	velocity: {
+		title: "Velocidad",
+		text: ["Qué tan rápido se mueve cada punto, usando todas las fechas."],
+	},
+	zones: {
+		title: "Zonas",
+		text: [
+			"Divide el terreno en zonas más bajas y más altas que al inicio, con su contorno. Reproduce el tiempo para ver cómo crecen.",
+			"Cada zona principal marca su punto extremo y su velocidad media. Toca una etiqueta para volar ahí.",
+			"«Más alta» significa que se acercó al satélite: también puede ser movimiento horizontal.",
+		],
+	},
+	differential: {
+		title: "Diferencial",
+		text: [
+			"Resalta dónde el terreno se dobla porque un lado baja más que el otro. Ese doblez es lo que suele afectar caminos, canales y tuberías.",
+			"Señala un patrón; no es una evaluación de daño.",
+		],
+	},
+	acceleration: {
+		title: "Aceleración",
+		text: [
+			"Compara la primera y la segunda mitad de las fechas para ver dónde el hundimiento se acelera o se frena.",
+			"Con menos de dos años de datos puede reflejar ciclos de temporada, no una tendencia real.",
+		],
+	},
+};
 
 interface LayerPanelProps {
 	region: Region;
 	ui: (layerId: string) => LayerUiState;
 	onVisible: (layerId: string, visible: boolean) => void;
 	onOpacity: (layerId: string, opacity: number) => void;
-	colorMode: ColorMode;
-	onColorMode: (mode: ColorMode) => void;
-	velocityLimit: number;
+	view: MapView;
+	onView: (view: MapView) => void;
+	/** Límite de color del campo de la vista activa. */
+	fieldLimit: number;
+	zoneCount: number;
+	accelerationAvailable: boolean;
 	deform3d: boolean;
 	deformFactor: DeformFactor;
 	onDeform3d: (on: boolean) => void;
@@ -31,9 +69,11 @@ export function LayerPanel({
 	ui,
 	onVisible,
 	onOpacity,
-	colorMode,
-	onColorMode,
-	velocityLimit,
+	view,
+	onView,
+	fieldLimit,
+	zoneCount,
+	accelerationAvailable,
 	deform3d,
 	deformFactor,
 	onDeform3d,
@@ -41,9 +81,20 @@ export function LayerPanel({
 }: LayerPanelProps) {
 	return (
 		<Panel className="w-full p-3 sm:w-72">
-			<PanelTitle className="flex items-center gap-1.5 px-1">
-				<Layers className="size-3.5" aria-hidden /> Capas
-			</PanelTitle>
+			<div className="flex items-center justify-between px-1">
+				<PanelTitle className="flex items-center gap-1.5">
+					<Layers className="size-3.5" aria-hidden /> Capas
+				</PanelTitle>
+				<InfoHint label="Capas">
+					<p>
+						Pinta sobre el mapa lo que midió el radar.{" "}
+						<strong>Acumulado</strong> muestra cuánto cambió el suelo hasta la
+						fecha elegida. <strong>Velocidad</strong> muestra qué tan rápido
+						cambia cada año.
+					</p>
+					<p>Café rojizo: se hunde. Azul: se acerca al satélite.</p>
+				</InfoHint>
+			</div>
 			{region.layers.length === 0 ? (
 				<p className="mt-2 rounded-xl bg-white/5 px-3 py-2.5 text-sm text-slate-300">
 					Los fenómenos de esta región (expansión urbana, Río Tijuana) llegarán
@@ -71,15 +122,38 @@ export function LayerPanel({
 								</div>
 								{state.visible && (
 									<>
+										<div className="mt-3 flex items-center justify-between">
+											<span className="text-xs text-slate-400">
+												Qué muestra el mapa
+											</span>
+											<InfoHint label={VIEW_HELP[view].title}>
+												{VIEW_HELP[view].text.map((t) => (
+													<p key={t}>{t}</p>
+												))}
+											</InfoHint>
+										</div>
 										<Segmented
-											label="Color"
-											value={colorMode}
-											onChange={onColorMode}
+											label="Vista del mapa"
+											value={view}
+											onChange={onView}
+											columns={3}
 											options={[
 												{ value: "cumulative", label: "Acumulado" },
 												{ value: "velocity", label: "Velocidad" },
+												{ value: "zones", label: "Zonas" },
+												{ value: "differential", label: "Diferencial" },
+												{
+													value: "acceleration",
+													label: "Aceleración",
+													disabled: !accelerationAvailable,
+												},
 											]}
 										/>
+										{!accelerationAvailable && (
+											<p className="mt-1 text-xs text-slate-400">
+												Aceleración necesita al menos 4 fechas.
+											</p>
+										)}
 										<div className="mt-3 flex items-center gap-3">
 											<span className="text-xs text-slate-400">Opacidad</span>
 											<Slider
@@ -93,8 +167,9 @@ export function LayerPanel({
 										</div>
 										<Legend
 											layer={layer}
-											mode={colorMode}
-											velocityLimit={velocityLimit}
+											view={view}
+											fieldLimit={fieldLimit}
+											zoneCount={zoneCount}
 										/>
 										<div className="mt-3 border-t border-white/10 pt-3">
 											<div className="flex items-center justify-between gap-3">
@@ -105,11 +180,24 @@ export function LayerPanel({
 													<Mountain className="size-3.5" aria-hidden />
 													Hundimiento 3D
 												</label>
-												<Switch
-													id={`${id}-3d`}
-													checked={deform3d}
-													onCheckedChange={onDeform3d}
-												/>
+												<span className="flex items-center gap-1">
+													<InfoHint label="Hundimiento 3D">
+														<p>
+															Baja el terreno según el dato para que se vea la
+															forma del hundimiento.
+														</p>
+														<p>
+															Los centímetros reales serían invisibles a esta
+															escala, por eso se multiplican miles de veces. Las
+															alturas de este modo no son reales.
+														</p>
+													</InfoHint>
+													<Switch
+														id={`${id}-3d`}
+														checked={deform3d}
+														onCheckedChange={onDeform3d}
+													/>
+												</span>
 											</div>
 											{deform3d && (
 												<Segmented
@@ -143,24 +231,33 @@ export function Segmented<T extends string | number>({
 	value,
 	options,
 	onChange,
+	columns,
 }: {
 	label: string;
 	value: T;
-	options: Array<{ value: T; label: string }>;
+	options: Array<{ value: T; label: string; disabled?: boolean }>;
 	onChange: (value: T) => void;
+	/** Rejilla en vez de una sola fila, para muchas opciones. */
+	columns?: 3;
 }) {
 	return (
 		<fieldset className="mt-3">
 			<legend className="sr-only">{label}</legend>
-			<div className="flex rounded-lg bg-black/30 p-0.5">
+			<div
+				className={cn(
+					"rounded-lg bg-black/30 p-0.5",
+					columns ? "grid grid-cols-3 gap-0.5" : "flex",
+				)}
+			>
 				{options.map((o) => (
 					<button
 						key={String(o.value)}
 						type="button"
 						aria-pressed={o.value === value}
+						disabled={o.disabled}
 						onClick={() => onChange(o.value)}
 						className={cn(
-							"flex-1 rounded-md px-2 py-1 text-xs font-semibold transition",
+							"flex-1 rounded-md px-1.5 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40",
 							o.value === value
 								? "bg-cyan-400 text-slate-950"
 								: "text-slate-300 hover:text-white",
@@ -174,40 +271,151 @@ export function Segmented<T extends string | number>({
 	);
 }
 
-export function Legend({
-	layer,
-	mode,
-	velocityLimit,
-}: {
-	layer: Layer;
-	mode: ColorMode;
-	velocityLimit: number;
-}) {
-	const velocity = mode === "velocity";
-	const limit = velocity ? velocityLimit : symmetricLimit(layer.valueRange);
-	const unit = velocity ? "cm/año" : "cm";
-	// izquierda = negativo (hundimiento), derecha = positivo (acercamiento)
-	const stops = Array.from({ length: 11 }, (_, i) =>
-		toCss(vik(1 - i / 10)),
+const gradient = (
+	scale: (t: number) => [number, number, number],
+	flip = false,
+) =>
+	Array.from({ length: 11 }, (_, i) =>
+		toCss(scale(flip ? 1 - i / 10 : i / 10)),
 	).join(", ");
-	const fmt = (v: number) =>
-		`${v > 0 ? "+" : ""}${v.toFixed(Math.abs(v) < 10 ? 1 : 0)}`;
+
+const fmt = (v: number) =>
+	`${v > 0 ? "+" : ""}${v.toFixed(Math.abs(v) < 10 ? 1 : 0)}`;
+
+const NoDataKey = () => (
+	<p className="flex items-center gap-1.5">
+		<span className="inline-block size-2.5 rounded-sm bg-[#6f6a75]" /> Sin dato
+		(baja coherencia)
+	</p>
+);
+
+function Bar({
+	stops,
+	left,
+	middle,
+	right,
+}: {
+	stops: string;
+	left: string;
+	middle?: string;
+	right: string;
+}) {
 	return (
-		<figure className="mt-3" aria-label="Leyenda de la capa">
+		<>
 			<div
 				className="h-2.5 rounded-full"
 				style={{ background: `linear-gradient(90deg, ${stops})` }}
 			/>
 			<div className="mt-1 flex justify-between text-[0.7rem] tabular-nums text-slate-300">
-				<span>
-					{fmt(-limit)} {unit}
-				</span>
-				<span>0</span>
-				<span>
-					{fmt(limit)} {unit}
-				</span>
+				<span>{left}</span>
+				{middle && <span>{middle}</span>}
+				<span>{right}</span>
 			</div>
-			<figcaption className="mt-2 space-y-1 text-xs leading-relaxed text-slate-400">
+		</>
+	);
+}
+
+export function Legend({
+	layer,
+	view,
+	fieldLimit,
+	zoneCount,
+}: {
+	layer: Layer;
+	view: MapView;
+	fieldLimit: number;
+	zoneCount: number;
+}) {
+	const caption = "mt-2 space-y-1 text-xs leading-relaxed text-slate-400";
+
+	if (view === "zones") {
+		const keys = [Band.HIGH, Band.MID, Band.LOW, Band.UP] as const;
+		const detail = {
+			[Band.HIGH]: "más de 10 cm",
+			[Band.MID]: "5 a 10 cm",
+			[Band.LOW]: "2 a 5 cm",
+			[Band.UP]: "más de 2 cm hacia el satélite",
+		};
+		return (
+			<figure className="mt-3" aria-label="Leyenda de zonas">
+				<ul className="space-y-1 text-xs text-slate-200">
+					{keys.map((b) => (
+						<li key={b} className="flex items-center gap-2">
+							<span
+								className="inline-block size-3 rounded-sm"
+								style={{ background: BAND_COLORS[b] }}
+							/>
+							<span className="font-semibold">{BAND_NAMES[b]}</span>
+							<span className="text-slate-400">{detail[b]}</span>
+						</li>
+					))}
+				</ul>
+				<figcaption className={caption}>
+					{zoneCount === 0 && (
+						<p className="font-semibold text-slate-200">
+							Todavía no hay cambio suficiente para marcar zonas en esta fecha.
+						</p>
+					)}
+					<p>Áreas menores a 1 km² no se marcan.</p>
+					<NoDataKey />
+				</figcaption>
+			</figure>
+		);
+	}
+
+	if (view === "differential") {
+		return (
+			<figure className="mt-3" aria-label="Leyenda de hundimiento diferencial">
+				<Bar
+					stops={gradient(sequential)}
+					left="0"
+					right={`${fieldLimit.toFixed(1)} cm/km`}
+				/>
+				<figcaption className={caption}>
+					<p>
+						Más oscuro: el terreno se{" "}
+						<strong className="text-slate-200">dobla</strong> más, porque un
+						lado baja más que el otro.
+					</p>
+					<p>Señala un patrón; no es una evaluación de daño.</p>
+					<NoDataKey />
+				</figcaption>
+			</figure>
+		);
+	}
+
+	if (view === "acceleration") {
+		return (
+			<figure className="mt-3" aria-label="Leyenda de aceleración">
+				<Bar
+					stops={gradient(vik, true)}
+					left={`Se acelera ${fieldLimit.toFixed(1)}`}
+					middle="0"
+					right={`Se frena ${fieldLimit.toFixed(1)}`}
+				/>
+				<figcaption className={caption}>
+					<p>
+						Compara la velocidad de la segunda mitad de las fechas con la de la
+						primera, en cm/año.
+					</p>
+					<NoDataKey />
+				</figcaption>
+			</figure>
+		);
+	}
+
+	const velocity = view === "velocity";
+	const limit = velocity ? fieldLimit : symmetricLimit(layer.valueRange);
+	const unit = velocity ? "cm/año" : "cm";
+	return (
+		<figure className="mt-3" aria-label="Leyenda de la capa">
+			<Bar
+				stops={gradient(vik, true)}
+				left={`${fmt(-limit)} ${unit}`}
+				middle="0"
+				right={`${fmt(limit)} ${unit}`}
+			/>
+			<figcaption className={caption}>
 				{velocity ? (
 					<p>
 						<strong className="text-slate-200">Velocidad</strong>: tendencia
@@ -226,10 +434,7 @@ export function Legend({
 					<span className="font-semibold text-sky-300">Positivo</span>: se
 					acerca.
 				</p>
-				<p className="flex items-center gap-1.5">
-					<span className="inline-block size-2.5 rounded-sm bg-[#6f6a75]" /> Sin
-					dato (baja coherencia)
-				</p>
+				<NoDataKey />
 				{!velocity && (
 					<p className="tabular-nums">
 						Rango observado: {layer.valueRange[0].toFixed(1)} a{" "}

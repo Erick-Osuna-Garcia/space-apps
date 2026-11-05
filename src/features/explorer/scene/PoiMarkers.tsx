@@ -2,6 +2,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
 import type { Poi } from "../manifest";
+import { placeLabel } from "./placeLabel";
 
 const LABEL_HEIGHT = 20;
 
@@ -24,16 +25,12 @@ export function PoiMarkers({ pois, heightAt, labels }: PoiMarkersProps) {
 		for (const poi of pois) {
 			const el = labels.current?.get(poi.id);
 			if (!el) continue;
-			v.current
-				.set(poi.col, heightAt(poi.col, poi.row) + LABEL_HEIGHT, poi.row)
-				.project(camera);
-			const inView =
-				Math.abs(v.current.x) < 1.05 && Math.abs(v.current.y) < 1.05;
-			el.style.visibility = inView ? "visible" : "hidden";
-			if (!inView) continue;
-			const x = ((v.current.x + 1) / 2) * size.width;
-			const y = ((1 - v.current.y) / 2) * size.height;
-			el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+			v.current.set(
+				poi.col,
+				heightAt(poi.col, poi.row) + LABEL_HEIGHT,
+				poi.row,
+			);
+			placeLabel(el, v.current, camera, size);
 		}
 	});
 

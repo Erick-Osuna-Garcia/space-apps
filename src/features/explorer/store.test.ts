@@ -2,16 +2,15 @@ import { describe, expect, it } from "vitest";
 import { createExplorerStore, layerUi } from "./store";
 
 describe("explorer store", () => {
-	it("cambiar de región reinicia la línea de tiempo y la sonda", () => {
+	it("cambiar de región reinicia la línea de tiempo y vuelve a reproducir", () => {
 		const store = createExplorerStore();
 		store.actions.selectDate(5);
-		store.actions.setPlaying(true);
 		store.actions.setProbe({ col: 1, row: 1, lon: 0, lat: 0 });
 		store.actions.setRegion("tijuana");
 		expect(store.state).toMatchObject({
 			regionId: "tijuana",
 			dateIndex: 0,
-			playing: false,
+			playing: true,
 			probe: null,
 		});
 	});
@@ -49,22 +48,23 @@ describe("explorer store", () => {
 	it("modos de análisis", () => {
 		const store = createExplorerStore();
 		expect(store.state).toMatchObject({
-			colorMode: "cumulative",
+			mapView: "cumulative",
 			statsThreshold: 5,
-			deform3d: false,
-			deformFactor: 5000,
+			deform3d: true,
+			deformFactor: 10000,
+			playing: true,
 		});
-		store.actions.setColorMode("velocity");
+		store.actions.setMapView("zones");
 		store.actions.setStatsThreshold(10);
-		store.actions.setDeform3d(true);
-		store.actions.setDeformFactor(10000);
+		store.actions.setDeform3d(false);
+		store.actions.setDeformFactor(5000);
 		store.actions.setRegion("tijuana");
 		// los modos de análisis se conservan al cambiar de región
 		expect(store.state).toMatchObject({
-			colorMode: "velocity",
+			mapView: "zones",
 			statsThreshold: 10,
-			deform3d: true,
-			deformFactor: 10000,
+			deform3d: false,
+			deformFactor: 5000,
 		});
 	});
 });

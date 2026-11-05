@@ -44,11 +44,35 @@ export function valueToT(value: number, limit: number): number {
 	return Math.min(1, Math.max(0, 0.5 - value / (2 * limit)));
 }
 
+const SEQUENTIAL_STOPS: Rgb[] = [
+	[0.98, 0.95, 0.8],
+	[0.98, 0.78, 0.35],
+	[0.93, 0.45, 0.16],
+	[0.72, 0.13, 0.13],
+	[0.3, 0.02, 0.15],
+];
+
+/** Escala secuencial para magnitudes sin signo (hundimiento diferencial). */
+export function sequential(t: number): Rgb {
+	const x = Math.min(1, Math.max(0, t)) * (SEQUENTIAL_STOPS.length - 1);
+	const i = Math.min(Math.floor(x), SEQUENTIAL_STOPS.length - 2);
+	const f = x - i;
+	const [a, b] = [SEQUENTIAL_STOPS[i], SEQUENTIAL_STOPS[i + 1]];
+	return [
+		a[0] + (b[0] - a[0]) * f,
+		a[1] + (b[1] - a[1]) * f,
+		a[2] + (b[2] - a[2]) * f,
+	];
+}
+
 /** LUT RGBA8 de `size` colores para subir como textura. */
-export function colormapLut(size = 256): Uint8Array {
+export function colormapLut(
+	size = 256,
+	scale: (t: number) => Rgb = vik,
+): Uint8Array {
 	const out = new Uint8Array(size * 4);
 	for (let i = 0; i < size; i++) {
-		const [r, g, b] = vik(i / (size - 1));
+		const [r, g, b] = scale(i / (size - 1));
 		out.set(
 			[Math.round(r * 255), Math.round(g * 255), Math.round(b * 255), 255],
 			i * 4,

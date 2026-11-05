@@ -57,7 +57,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				{import.meta.env.DEV && (
 					<TanStackDevtools
 						config={{
-							position: "bottom-right",
+							position: "middle-right",
 						}}
 						plugins={[
 							{

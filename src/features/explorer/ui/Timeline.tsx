@@ -1,6 +1,8 @@
 import { Pause, Play } from "lucide-react";
 import { useEffect } from "react";
 import { Slider } from "#/components/ui/slider";
+import { elapsedText } from "../lib/friendly";
+import { InfoHint } from "./InfoHint";
 import { Panel } from "./Panel";
 
 const STEP_MS = 1100;
@@ -20,6 +22,8 @@ interface TimelineProps {
 	onSelect: (index: number) => void;
 	onPlaying: (playing: boolean) => void;
 	onAdvance: () => void;
+	/** La reproducción espera a que la capa esté cargada. */
+	ready: boolean;
 	/** Mensaje opcional bajo el slider (p. ej. en modo velocidad). */
 	note?: string;
 }
@@ -31,13 +35,14 @@ export function Timeline({
 	onSelect,
 	onPlaying,
 	onAdvance,
+	ready,
 	note,
 }: TimelineProps) {
 	useEffect(() => {
-		if (!playing) return;
+		if (!playing || !ready) return;
 		const id = window.setInterval(onAdvance, STEP_MS);
 		return () => window.clearInterval(id);
-	}, [playing, onAdvance]);
+	}, [playing, ready, onAdvance]);
 
 	const current = dates[Math.min(index, dates.length - 1)];
 	return (
@@ -62,8 +67,14 @@ export function Timeline({
 					>
 						{fmtDate(current)}
 					</span>
-					<span className="text-xs text-slate-400 tabular-nums">
-						{index + 1} / {dates.length}
+					<span className="flex items-center gap-1.5 text-xs text-slate-400 tabular-nums">
+						<span>{elapsedText(dates[0], current)}</span>
+						<InfoHint label="Línea de tiempo">
+							<p>
+								Cada punto es una pasada del satélite ({dates.length} fechas).
+								Mueve el control o presiona play para ver cómo cambia el suelo.
+							</p>
+						</InfoHint>
 					</span>
 				</div>
 				<Slider
