@@ -54,30 +54,34 @@ Para cada región con capas, el pipeline:
 1. **Descubre** productos NISAR L2 GUNW que intersectan el bbox y el rango de fechas (`asf_search`) y escribe `.cache/<region>/<capa>/discovery.json`. Si no hay productos, termina con un error que dice qué buscó.
 2. **Descarga el recorte** de cada producto: abre el HDF5 remoto (lectura por rangos HTTPS), lee la ventana del bbox y la guarda en `.cache/<region>/<capa>/subsets/` (fuera de git). Los recortes que ya están completos no se vuelven a descargar.
 3. **Remuestrea** la fase desenvuelta, la coherencia y la pantalla ionosférica a la grilla de la región.
-4. Resta la **pantalla ionosférica**: el producto la incluye pero no la aplica, y en banda L importa. Se puede desactivar con `ionosphere_correction: false`.
+4. La **pantalla ionosférica** no se resta por defecto (ver "Decisiones de datos"); se puede activar con `ionosphere_correction: true`.
 5. Convierte la fase a **desplazamiento LOS** en cm (λ = c / `centerFrequency`, ≈ 0.24 m), le resta la mediana de la zona estable de referencia (`reference_bbox`) e **invierte** la red de interferogramas por mínimos cuadrados (SBAS simplificado; con pares consecutivos equivale a una suma acumulada). Los píxeles con coherencia media menor al umbral quedan sin dato.
 
 Para revisar la cobertura a mano antes de correrlo, usa [Vertex](https://search.asf.alaska.edu/) (filtro: NISAR, L2 GUNW, dibuja el área de Mexicali) o Earthdata Search.
 
-### Decisión de datos (plan B)
+### Decisiones de datos
 
-**Revisión del 2026-11-04 → se usa NISAR. No hace falta el plan B (Sentinel-1).**
+**Revisión del 2026-11-04: se usa NISAR, sin plan B.** Todos los productos son PROVISIONAL (CRID P05023).
 
-La búsqueda sobre el bbox de Mexicali (oct-2025 → oct-2026) encontró 101 productos GUNW. Los stacks que cubren Cerro Prieto son:
+| Stack | Dirección | Pares | Cobertura Mexicali | Uso |
+|---|---|---|---|---|
+| **85/72** | Descendente | 26 | 95 % | Principal (Mexicali y Tijuana) |
+| **106/18** | Ascendente | 22 | 100 % | Segundo, para vertical y este-oeste |
+| 5/18 | Ascendente | 27 | 53 % | Descartado: deja fuera la referencia |
+| 157/72 | Descendente | 13 | 100 % | Descartado: pocos pares |
 
-| Track (relative orbit) | Frame | Dirección | Pares únicos |
-|---|---|---|---|
-| **5** | **18** | **Ascendente** | **27** ← elegido |
-| 85 | 72 | Descendente | 26 |
-| 106 | 18 | Ascendente | 22 |
-| 157 | 72 | Descendente | 13 |
+**Cómo se procesa y por qué:**
+- Sin corrección ionosférica: restarla par por par acumula su error y borró la señal del campo.
+- Se quita un plano por interferograma, ajustado en píxeles coherentes lejos del campo.
+- Solo se usa la componente conexa principal.
+- Los huecos (incluido el par faltante 20-jun → 2-jul) se llenan con la velocidad media del píxel, si tiene al menos 70 % de pares válidos.
+- La serie se suaviza con una media móvil de 5 fechas: quedan ±2–3 cm de ruido por fecha.
 
-- El stack elegido tiene 28 fechas, del 2025-10-29 al 2026-10-12, y forma una cadena de pares de 12 días **conectada** (hay dos saltos de 24 días: oct→nov 2025 y jul→ago 2026).
-- Todos los productos son **PROVISIONAL, CRID P05023** (calibrados). No se mezclan con BETA.
-- Los ids exactos de los productos quedan en `.cache/mexicali/subsidence/discovery.json` y, al exportar, en `manifest.json` → `layers[].products`.
-- Para fijar otro stack (p. ej. el descendente 85/72 y comparar geometrías), agrega `stack: {relative_orbit: 85, frame: 72}` a la capa en `regions.yaml`.
+**Validación del signo:** el campo de Cerro Prieto sale negativo (el suelo se aleja del satélite), como se espera. La magnitud medida es ~−3.5 cm/año en línea de vista, con un año de datos y una sola órbita.
 
-**Tamaño:** los 27 HDF5 completos suman unos 62 GB. Por eso el pipeline **no descarga los archivos completos**: los abre por HTTPS con `earthaccess`, lee con h5py solo la ventana del bbox de la región (fase, coherencia e ionosfera, a 80 m) y guarda ese recorte en `.cache/` (unos MB por producto).
+**Tiempos:** un recorte GUNW tarda ~35 s y uno GCOV ~3 min (viene a 10 m; se promedia a 80 m). Por eso GCOV y SME2 usan una escena por mes.
+
+**Producción geotérmica:** no se agregó. La búsqueda del 2026-11-04 solo dio cifras secundarias y contradictorias de capacidad, sin una serie oficial de producción del campo para este periodo. Si se consigue una de CFE o SENER, puede sumarse como contexto.
 
 ## Configuración (`regions.yaml`)
 

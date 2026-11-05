@@ -2,7 +2,7 @@
 
 Proyecto para el reto [Dancing with the SARs](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/) de NASA Space Apps 2026. Es un mapa 3D isométrico de Baja California donde pilotas una nave y ves, con datos de radar NISAR, cómo cambia el suelo. El caso central es el hundimiento alrededor del campo geotérmico de Cerro Prieto, en Mexicali.
 
-> **Estado de los datos:** la capa incluida en `public/data` es **sintética**, de desarrollo, y la app lo avisa en pantalla. Para generar la capa real se necesita una cuenta de NASA Earthdata: ver [`pipeline/README.md`](pipeline/README.md).
+> **Estado de los datos:** la capa incluida en `public/data` es **sintética**, de desarrollo, y la app lo indica con la etiqueta «Datos simulados». Para generar la capa real se necesita una cuenta de NASA Earthdata: ver [`pipeline/README.md`](pipeline/README.md).
 
 ## Cómo correrlo
 
