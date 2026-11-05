@@ -15,6 +15,7 @@ El reto "Dancing with the SARs" (NASA Space Apps 2026) pide una app interactiva 
   - Modo **velocidad** (cm/año) además del acumulado.
   - Panel de **estadísticas**: hundimiento máximo con vuelo al punto, área que supera un umbral y velocidad media de la zona que se hunde.
   - Modo opcional de **hundimiento 3D exagerado**, en el que el terreno baja visualmente según el dato y lleva una etiqueta clara de que es ilustrativo.
+- **Indicadores amigables** (agregado a pedido del usuario): estado del punto en palabras, comparaciones cotidianas (objetos y canchas de fútbol), distancia al punto de interés más cercano, tiempo transcurrido y ayuda "?" en cada panel, para que los datos se entiendan sin saber de radar.
 - Se reemplaza la página de inicio del template por el explorador.
 - **Fuera de alcance (registrado para cambios futuros):**
   - Ciclos agrícolas del Valle de Mexicali (GCOV HH/HV).

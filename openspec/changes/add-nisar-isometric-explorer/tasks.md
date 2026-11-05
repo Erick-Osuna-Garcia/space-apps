@@ -62,3 +62,9 @@
 - [ ] 8.3 Extender el material: textura de velocidad + `uMode` en el fragment shader y desplazamiento vertical con normales perturbadas en el vertex shader (sin dato = sin desplazamiento); verificar en el navegador alternando los modos y activando ×5000 con la reproducción
 - [ ] 8.4 Hacer que `heightAt` (vuelo, POIs, picking) siga la superficie desplazada; verificar en el navegador que la nave y los faros no quedan enterrados ni flotando al activar el modo 3D
 - [ ] 8.5 UI: selector Acumulado/Velocidad en el panel de capas, leyenda y sonda en las unidades del modo, panel de estadísticas con umbral 2/5/10 cm y "volar al punto", control y etiqueta "Hundimiento exagerado ×N · ilustrativo"; verificar en el navegador cada escenario de la spec, también en vista compacta (móvil)
+
+## 9. Indicadores amigables
+
+- [ ] 9.1 Implementar `lib/friendly.ts` (nivel de tendencia, comparación de cm con objetos, área en canchas, punto de interés más cercano, tiempo transcurrido); verificar con tests Vitest de cada corte y caso borde
+- [ ] 9.2 Implementar `ui/InfoHint` (ayuda con Popover) y agregarla a destinos, capas, hundimiento 3D, estadísticas, sonda y línea de tiempo; verificar en el navegador que abre con teclado, cierra con Escape y que la nave se puede pilotar con la ayuda abierta
+- [ ] 9.3 Mostrar en la sonda el estado en palabras, la comparación y la ubicación; en estadísticas las comparaciones; en la línea de tiempo el tiempo transcurrido; verificar en el navegador en escritorio y en vista compacta sin scroll horizontal

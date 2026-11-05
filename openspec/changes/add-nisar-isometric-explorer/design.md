@@ -73,7 +73,7 @@
 - **Cámara:** `OrthographicCamera` con azimut 45° y elevación ≈ 35.264° (isométrico verdadero). Va pegada a la nave con un offset fijo y `lerp` amortiguado. El zoom ortográfico (`camera.zoom`) queda limitado entre [min, max] y se controla con la rueda o el pellizco.
 - **Nave:** modelo low-poly construido con primitivas de three (sin assets externos ni temas de licencias), con un leve bamboleo y un rastro de partículas. Así queda original.
 - **Movimiento:** el vector de entrada WASD/flechas se rota −45° para alinearlo a la pantalla isométrica. Velocidad con aceleración y fricción en `useFrame`. Altura = muestreo bilineal del heightmap en CPU + altura de vuelo constante. Posición limitada al bbox.
-- **Clic/tap para volar:** raycast contra la malla del terreno da un objetivo, y la nave se mueve hacia él con *arrive steering*. Cualquier tecla cancela el objetivo.
+- **Clic/tap para volar:** el rayo de la cámara se recorre sobre el heightmap (`lib/pick.ts`; ver Risks) para obtener un objetivo, y la nave se mueve hacia él con *arrive steering*. Cualquier tecla cancela el objetivo.
 - **POIs y warp:** al elegir un POI de la misma región, la nave vuela hacia él. Si es de otra región, se hace un fade/efecto de warp (shader de líneas radiales o fundido), se cambia la región en el store, se cargan los assets con TanStack Query y la nave aparece sobre el POI.
 
 ### D9. Estado y datos en el frontend
@@ -120,6 +120,13 @@ src/features/explorer/
 - **Huecos sin dato (solo geometría):** si no se desplazaran, quedarían como pilares que sobresalen del cuenco, una pared artificial. Por eso se usa un segundo cubo **solo para la geometría**, donde los huecos se rellenan por dilación iterativa (promedio de vecinos válidos, 8 pasadas ≈ 1 km). Se calcula una vez en el cliente. El color sigue usando el cubo original, así que esos píxeles se ven grises. Los huecos más grandes no se desplazan.
 - **Escena y nave:** `heightAt` (vuelo, POIs, picking) suma el mismo desplazamiento de la fecha seleccionada, así la nave y los faros siguen la superficie.
 - **Factores:** ×2000 / ×5000 / ×10000 (por defecto ×5000; 13 cm → ~650 m ≈ 5 celdas), con la etiqueta "ilustrativo" visible mientras el modo está activo. Requiere la capa visible.
+
+### D14. Indicadores amigables
+- **Lógica pura en `lib/friendly.ts`** (nivel de tendencia, comparaciones, punto más cercano, tiempo transcurrido) para probarla con Vitest; los componentes solo la muestran.
+- **Niveles de tendencia (cm/año, orientativos):** |v| < 1 estable (dentro del ruido esperable); −1 a −3 lento; −3 a −8 moderado; < −8 rápido; > +1 "se acerca al satélite" y no "sube", porque LOS también mezcla movimiento horizontal. La ayuda aclara que no son una evaluación de riesgo.
+- **Comparaciones:** medidas estándar y fáciles de verificar: moneda ~2.5 cm, tarjeta 8.6 cm, lápiz 19 cm, regla 30 cm; cancha FIFA 105 × 68 m = 0.00714 km². Siempre con "≈".
+- **Ayuda:** `Popover` de radix-ui (ya instalado) por foco, Escape y clic fuera. No es modal, así que no bloquea el pilotaje.
+- **Alternativa descartada:** `title` nativo, porque no funciona en pantallas táctiles ni con teclado.
 
 ## Risks / Trade-offs
 

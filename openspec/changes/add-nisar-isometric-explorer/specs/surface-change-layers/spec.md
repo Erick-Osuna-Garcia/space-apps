@@ -129,3 +129,62 @@ El usuario SHALL poder activar un modo opcional que desplaza verticalmente la su
 #### Scenario: Huecos grandes sin dato
 - **WHEN** un píxel sin dato está a más de ~1 km de cualquier píxel válido
 - **THEN** no se desplaza (se queda a la altura del relieve)
+
+### Requirement: Estado del punto en lenguaje claro
+La sonda SHALL resumir la tendencia del punto bajo la nave con una etiqueta en palabras (estable, se hunde lento, moderado o rápido, se acerca al satélite) que combine ícono, texto y color. Los cortes de cada nivel SHALL poder consultarse en la ayuda, que SHALL aclarar que son orientativos y no una evaluación de riesgo.
+
+#### Scenario: Punto que se hunde rápido
+- **WHEN** la nave está sobre un punto con tendencia de −12 cm/año
+- **THEN** la sonda muestra la etiqueta "Se hunde rápido" junto al valor numérico
+
+#### Scenario: Punto estable
+- **WHEN** la tendencia del punto está entre −1 y +1 cm/año
+- **THEN** la sonda muestra la etiqueta "Estable"
+
+#### Scenario: Punto sin dato
+- **WHEN** el punto no tiene tendencia calculable
+- **THEN** la sonda muestra "Sin lectura" y explica que el radar perdió coherencia ahí
+
+### Requirement: Comparaciones cotidianas
+La UI SHALL acompañar los valores principales con una comparación cotidiana: el desplazamiento en cm con un objeto de tamaño conocido y el área en km² con canchas de fútbol, redondeada a dos cifras significativas y marcada como aproximada.
+
+#### Scenario: Hundimiento con objeto
+- **WHEN** la sonda o las estadísticas muestran un hundimiento de 13 cm
+- **THEN** se muestra una comparación con un objeto de tamaño similar
+
+#### Scenario: Área en canchas
+- **WHEN** las estadísticas muestran un área de 120 km²
+- **THEN** se muestra "≈ 17,000 canchas de fútbol"
+
+#### Scenario: Área nula
+- **WHEN** el área es 0 km²
+- **THEN** no se muestra comparación de área
+
+### Requirement: Ubicación entendible
+La sonda SHALL indicar el punto de interés más cercano de la región y su distancia en km, además de las coordenadas. Cuando la nave esté a menos de 1 km SHALL indicar que está sobre ese punto.
+
+#### Scenario: Cerca de un punto de interés
+- **WHEN** la nave está a 3.2 km de la planta Cerro Prieto y ese es el punto más cercano
+- **THEN** la sonda muestra "A 3.2 km de Planta geotérmica Cerro Prieto"
+
+#### Scenario: Sobre un punto de interés
+- **WHEN** la nave está a menos de 1 km de un punto de interés
+- **THEN** la sonda muestra "Sobre" seguido del nombre del punto
+
+### Requirement: Ayuda contextual en cada panel
+Cada panel de datos (destinos, capas, hundimiento 3D, estadísticas, sonda y línea de tiempo) SHALL ofrecer un botón de ayuda con una explicación corta en lenguaje sencillo, operable con ratón, teclado y pantalla táctil, y SHALL no impedir pilotar la nave.
+
+#### Scenario: Abrir ayuda
+- **WHEN** el usuario activa el botón de ayuda de un panel
+- **THEN** aparece la explicación junto al panel y se cierra con Escape o al tocar fuera
+
+### Requirement: Tiempo transcurrido
+La línea de tiempo SHALL mostrar en palabras cuánto tiempo pasó entre la primera fecha y la fecha seleccionada.
+
+#### Scenario: Fecha avanzada
+- **WHEN** la fecha seleccionada está a 6 meses de la primera
+- **THEN** la línea de tiempo muestra "6 meses desde el inicio"
+
+#### Scenario: Primera fecha
+- **WHEN** está seleccionada la primera fecha
+- **THEN** la línea de tiempo muestra "Fecha inicial"
