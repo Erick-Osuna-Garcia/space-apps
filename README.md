@@ -2,7 +2,7 @@
 
 Proyecto para el reto [Dancing with the SARs](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/) de NASA Space Apps 2026. Es un mapa 3D isométrico de Baja California donde pilotas una nave y ves, con datos de radar NISAR, cómo cambia el suelo. El caso central es el hundimiento alrededor del campo geotérmico de Cerro Prieto, en Mexicali.
 
-> **Estado de los datos:** la capa incluida en `public/data` es **sintética**, de desarrollo, y la app lo indica con la etiqueta «Datos simulados». Para generar la capa real se necesita una cuenta de NASA Earthdata: ver [`pipeline/README.md`](pipeline/README.md).
+> **Estado de los datos:** las capas de `public/data` son **mediciones NISAR reales** (productos PROVISIONAL, oct-2025 a oct-2026), más datos de apoyo de Copernicus, ESA WorldCover, WorldPop y OpenStreetMap. Regenerarlas requiere una cuenta de NASA Earthdata: ver [`pipeline/README.md`](pipeline/README.md).
 
 ## Cómo correrlo
 
@@ -19,19 +19,20 @@ Otros comandos: `bun run build`, `bun run test` y `bun run check`.
 - **Destinos:** vuela a un punto de interés o salta a otra región con warp.
 - **Línea de tiempo:** elige una fecha o presiona play.
 
-## Vistas del mapa
+## Capas del mapa
 
-Se elige una a la vez en el panel de capas. Cada una tiene su ayuda «?».
+Se elige una capa a la vez en el panel de capas, y cada una tiene su ayuda «?». Toca cualquier punto para ver qué dice cada capa de ese lugar.
 
-| Vista | Qué muestra |
+| Tema | Capas |
 |---|---|
-| Acumulado | Cuánto se movió el suelo desde la primera fecha, en cm |
-| Velocidad | Qué tan rápido se mueve cada punto, en cm/año |
-| Zonas | Áreas más bajas o más altas que al inicio, con contorno, punto extremo y velocidad media |
-| Diferencial | Dónde el terreno se dobla porque un lado baja más que el otro, en cm/km |
-| Aceleración | Dónde el hundimiento se acelera o se frena |
+| Movimiento | Acumulado, Velocidad, Zonas, Diferencial, Aceleración, Disturbios, Vertical y Este-oeste (con flechas) |
+| Superficie | Construcciones y suelo (HH), Vegetación (HV), Cambios |
+| Agua | Agua en superficie, Humedad del suelo |
+| Impacto | Pendiente, Laderas activas, Uso de suelo, Población |
 
-El radar mide en línea de vista, así que los valores mezclan movimiento vertical y horizontal. Las vistas señalan patrones; no evalúan daños ni riesgo. Al entrar, el mapa arranca solo: la línea de tiempo se reproduce y el terreno se hunde con «Hundimiento 3D» a ×10,000. Esa exageración es solo ilustrativa, y se puede pausar o apagar.
+Sobre cualquier capa se pueden encender caminos y canales, con los tramos en zonas de cambio resaltados.
+
+**Límites del dato:** hay un año de mediciones, con ±2–3 cm de ruido por fecha aun después de suavizar. El radar mide en línea de vista, así que Acumulado y Velocidad mezclan movimiento vertical y horizontal. Las capas señalan patrones y exposición; no evalúan daños ni riesgo. El «Hundimiento 3D» a ×10,000 es solo ilustrativo.
 
 ## Estructura
 

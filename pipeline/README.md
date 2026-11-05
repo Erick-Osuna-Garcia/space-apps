@@ -88,10 +88,11 @@ Para revisar la cobertura a mano antes de correrlo, usa [Vertex](https://search.
 | Campo | Significado |
 |---|---|
 | `max_grid_size` | Celdas en el lado mayor de la grilla de cada región (por defecto 512). |
-| `size_budget_mb` | Presupuesto de assets por región. Si se excede, baja la resolución automáticamente y, si aun así no cabe, falla. |
+| `size_budget_mb` | Presupuesto de assets por región (hoy ~52 MB en Mexicali y ~35 MB en Tijuana). |
 | `projection` | CRS métrico común (UTM 11N cubre Mexicali y Tijuana). |
 | `regions[].bbox` | `[minLon, minLat, maxLon, maxLat]` WGS84. |
-| `regions[].layers[]` | Capas a generar. Hoy solo existe `type: los-displacement` (GUNW). Una región sin capas genera solo terreno. |
+| `regions[].layers[]` | Capa de desplazamiento (GUNW), con `stack` y `secondary_stack`. |
+| `regions[].extras` | Capas adicionales: `slope`, `active-slopes`, `landcover`, `population`, `infrastructure`, `disturbance`, `decomposition`, `surface` (GCOV), `moisture` (SME2). Si una falla, se registra y las demás se generan. |
 | `layers[].reference_bbox` | Zona estable (roca) que se usa como referencia de desplazamiento 0. |
 
 ## Formato de assets
