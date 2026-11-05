@@ -113,8 +113,8 @@ Al entrar a una región con capa, el mapa SHALL empezar con el hundimiento 3D ac
 - **THEN** la línea de tiempo queda en pausa hasta que el usuario presione play
 
 ### Requirement: Fecha visible en el mapa
-Mientras haya línea de tiempo, la UI SHALL mostrar abajo a la derecha, en tamaño grande, "Fecha:" seguido de la fecha seleccionada.
+Mientras haya línea de tiempo, la UI SHALL mostrar justo encima de ella la fecha seleccionada como un título grande de estilo juego, con el tiempo transcurrido como subtítulo. Cada fecha SHALL permanecer unos 3 segundos durante la reproducción, con una transición suave del terreno.
 
 #### Scenario: Fecha durante la reproducción
 - **WHEN** la línea de tiempo avanza
-- **THEN** la fecha de abajo a la derecha cambia junto con la deformación del terreno
+- **THEN** el título y su subtítulo cambian junto con la deformación del terreno

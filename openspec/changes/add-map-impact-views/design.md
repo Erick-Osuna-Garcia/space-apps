@@ -51,6 +51,9 @@ Cinco opciones no caben en una fila de `Segmented` a 288 px: el componente admit
 ### D9. Entrada animada
 Los valores iniciales del store pasan a `deform3d: true`, `deformFactor: 10000` y `playing: true`. `Timeline` no avanza hasta que el cubo está listo, para que la animación no arranque a medias. Al cambiar de región se reanuda la reproducción. Costo: `fillForDisplay` ahora corre siempre al cargar (~35 M operaciones, una vez por cubo).
 
+### D10. Título de fecha y ritmo
+El título usa Pixelify Sans con sombra dura: evoca un título de juego sin copiar una fuente concreta, e incluye acentos y ñ. `key={date}` reinicia su animación de entrada. Cada fecha dura 3 s y la transición del terreno 2 s, unos 50 s por vuelta con 17 fechas y 1.5 min con 28. NISAR no tiene datos anteriores a oct-2025, así que "más tiempo" se resuelve con el ritmo y no con más historia.
+
 ## Risks / Trade-offs
 
 - **[Cortes fijos en otras regiones]** → sirven para Cerro Prieto; una región con cambios mucho menores no mostraría zonas. Se ajustan si se agregan capas.

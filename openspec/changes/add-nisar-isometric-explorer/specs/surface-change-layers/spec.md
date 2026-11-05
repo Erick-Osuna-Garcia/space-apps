@@ -68,11 +68,11 @@ La UI SHALL mostrar los créditos de cada fuente (NASA/ISRO NISAR vía ASF DAAC,
 - **THEN** ve cada fuente con su atribución y la lista de productos NISAR usados en la capa activa
 
 ### Requirement: Aviso de datos no NISAR
-Cuando el manifiesto marca una capa como sintética o derivada de un sensor distinto a NISAR, la UI SHALL mostrar un aviso visible permanente mientras la capa esté activa, que indique el origen real de los datos.
+Cuando el manifiesto marca una capa como sintética o derivada de un sensor distinto a NISAR, la UI SHALL mostrar un aviso discreto y permanente mientras la capa esté activa, que indique el origen real de los datos, con una ayuda que lo explique. La UI MUST NOT presentar esa capa como medición NISAR.
 
 #### Scenario: Capa sintética
 - **WHEN** la capa activa tiene origen `synthetic` en el manifiesto
-- **THEN** la UI muestra un aviso "Datos sintéticos de desarrollo, no son mediciones NISAR"
+- **THEN** la UI muestra la etiqueta "Datos simulados" y su ayuda aclara que no son mediciones NISAR
 
 #### Scenario: Capa de respaldo Sentinel-1
 - **WHEN** la capa activa tiene origen `sentinel-1` en el manifiesto

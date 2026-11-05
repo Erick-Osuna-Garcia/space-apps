@@ -32,8 +32,14 @@
 
 - [x] 6.1 Dejar por defecto hundimiento 3D ×10,000 y reproducción automática (solo con la capa cargada y sin `prefers-reduced-motion`), y mostrar "Fecha: x" abajo a la derecha; verificar con tests del store, TypeScript y Biome
 
+## 7. Título de fecha y ritmo
+
+- [x] 7.1 Mostrar la fecha como título sobre la línea de tiempo y quitar la tarjeta de abajo a la derecha; verificar con TypeScript, Biome y tests
+- [x] 7.2 Alargar cada fecha a 3 s y la transición a 2 s; verificar en código y con los tests
+- [x] 7.3 Hacer discreto el aviso de origen ("Datos simulados" bajo el nombre de la región), sin presentar la capa como NISAR; verificar con TypeScript, Biome y `openspec validate --strict`
+
 ## Notas de verificación
 
 - **Sin prueba en navegador, por decisión del usuario.** Las verificaciones "en el navegador" de las tareas no se ejecutaron. Se verificó con Vitest, pytest, TypeScript, Biome, el build y la compilación de los shaders con `glslangValidator`.
-- **Tarea 1.1:** no se determinó la causa de la descarga lenta del cubo en el navegador automatizado (511 KB en 1.8 s, contra 0.08 s con `curl` para el cubo completo). Se agregaron los estados de carga y de error en la sonda; la causa sigue abierta.
+- **Tarea 1.1:** la causa era el servidor de desarrollo: Nitro comprime al vuelo con brotli cada archivo de `public/` (~25 s para el cubo). Se resolvió en `vite.config.ts`; además la sonda distingue carga y error.
 - **Tarea 5.3:** los FPS no se midieron.
