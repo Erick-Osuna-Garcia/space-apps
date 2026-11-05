@@ -1,235 +1,46 @@
-Welcome to your new TanStack Start app!
+# Dancing with the SARs · Explorador NISAR
 
-# Getting Started
+Proyecto para el reto [Dancing with the SARs](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/) de NASA Space Apps 2026. Es un mapa 3D isométrico de Baja California donde pilotas una nave y ves, con datos de radar NISAR, cómo cambia el suelo. El caso central es el hundimiento alrededor del campo geotérmico de Cerro Prieto, en Mexicali.
 
-To run this application:
+> **Estado de los datos:** la capa incluida en `public/data` es **sintética**, de desarrollo, y la app lo avisa en pantalla. Para generar la capa real se necesita una cuenta de NASA Earthdata: ver [`pipeline/README.md`](pipeline/README.md).
+
+## Cómo correrlo
 
 ```bash
 bun install
-bun --bun run dev
+bun run dev      # http://localhost:3000
 ```
 
-# Building For Production
+Otros comandos: `bun run build`, `bun run test` y `bun run check`.
 
-To build this application for production:
+## Cómo se usa
 
-```bash
-bun --bun run build
-```
+- **Pilotar:** `W A S D` o flechas, `Shift` para turbo. Clic o tap en el terreno para volar ahí. Rueda o pellizco para zoom.
+- **Destinos:** vuela a un punto de interés o salta a otra región con warp.
+- **Línea de tiempo:** elige una fecha o presiona play.
 
-## Styling
+## Vistas del mapa
 
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
+Se elige una a la vez en el panel de capas. Cada una tiene su ayuda «?».
 
-### Removing Tailwind CSS
+| Vista | Qué muestra |
+|---|---|
+| Acumulado | Cuánto se movió el suelo desde la primera fecha, en cm |
+| Velocidad | Qué tan rápido se mueve cada punto, en cm/año |
+| Zonas | Áreas más bajas o más altas que al inicio, con contorno, punto extremo y velocidad media |
+| Diferencial | Dónde el terreno se dobla porque un lado baja más que el otro, en cm/km |
+| Aceleración | Dónde el hundimiento se acelera o se frena |
 
-If you prefer not to use Tailwind CSS:
+El radar mide en línea de vista, así que los valores mezclan movimiento vertical y horizontal. Las vistas señalan patrones; no evalúan daños ni riesgo. Al entrar, el mapa arranca solo: la línea de tiempo se reproduce y el terreno se hunde con «Hundimiento 3D» a ×10,000. Esa exageración es solo ilustrativa, y se puede pausar o apagar.
 
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Remove `@tailwindcss/vite` and `tailwindcss` from `package.json`
+## Estructura
 
-## Linting & Formatting
+- `src/features/explorer/`: escena 3D (React Three Fiber), UI y análisis de datos.
+- `pipeline/`: pipeline offline en Python que convierte NISAR y el DEM en assets estáticos.
+- `public/data/`: assets generados.
+- `openspec/`: propuestas, specs y tareas del proyecto.
 
-This project uses [Biome](https://biomejs.dev/) for linting and formatting. The following scripts are available:
+## Créditos de datos
 
-
-```bash
-bun --bun run lint
-bun --bun run format
-bun --bun run check
-```
-
-
-## Deploy with Nitro
-
-This project uses Nitro as a generic server adapter, so it can run on any Node-compatible host.
-
-```bash
-npm run build
-node .output/server/index.mjs
-```
-
-The build output is a self-contained Node server. To deploy, push the `.output/` directory to your host (Render, Fly.io, your own VPS, etc.) and run the server command above.
-
-For host-specific presets (Vercel, Netlify, Cloudflare, AWS Lambda, etc.) and tuning, see https://v3.nitro.build/deploy.
-
-
-## Shadcn
-
-Add components using the latest version of [Shadcn](https://ui.shadcn.com/).
-
-```bash
-pnpm dlx shadcn@latest add button
-```
-
-
-## T3Env
-
-- You can use T3Env to add type safety to your environment variables.
-- Add Environment variables to the `src/env.mjs` file.
-- Use the environment variables in your code.
-
-### Usage
-
-```ts
-import { env } from "#/env";
-
-console.log(env.VITE_APP_TITLE);
-```
-
-
-
-
-
-
-## Routing
-
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
-```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-  
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+- NISAR: NASA/JPL-Caltech e ISRO, distribuidos por el ASF DAAC.
+- Produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved.
