@@ -26,7 +26,7 @@ uv run pytest          # tests
 uv run nisar-pipeline --synthetic
 ```
 
-Genera el **terreno real** (Copernicus DEM, público y sin login) más una capa de subsidencia **sintética**: un cuenco gaussiano de unos −12 cm/año centrado en Cerro Prieto, con ruido y parches sin dato. Sirve para desarrollar el frontend sin esperar a los datos NISAR. El manifiesto marca la capa con `source: "synthetic"` y la web muestra un aviso permanente. **No se debe entregar así**: ver "Datos NISAR reales".
+Genera el **terreno real** (Copernicus DEM, público y sin login) más una capa de subsidencia **sintética**: un cuenco gaussiano de unos −12 cm/año centrado en Cerro Prieto, con una parte que se acelera, ruido y parches sin dato. Sirve para desarrollar el frontend sin esperar a los datos NISAR. El manifiesto marca la capa con `source: "synthetic"` y la web muestra un aviso permanente. **No se debe entregar así**: ver "Datos NISAR reales".
 
 ## Credenciales NASA Earthdata
 

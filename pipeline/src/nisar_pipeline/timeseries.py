@@ -7,8 +7,9 @@ import warnings
 import numpy as np
 
 # d_LOS = SIGN * λ/(4π) * φ. Con SIGN = -1, un valor negativo significa que el suelo se aleja
-# del satélite (hundimiento). La convención se fija en tests/test_timeseries.py y se validó
-# empíricamente con Cerro Prieto (ver pipeline/README.md).
+# del satélite (hundimiento). La convención se fija en tests/test_gunw_timeseries.py. La
+# especificación del producto no define el signo: falta validarlo con datos reales de Cerro
+# Prieto, que debe salir como alejamiento (tarea 3.6).
 SIGN = -1.0
 
 

@@ -17,6 +17,9 @@ SIGMA_MINOR_M = 3_500.0
 ROTATION_DEG = 40.0  # eje mayor NE-SO, aprox. la tendencia del campo
 SEASONAL_CM = 0.4
 NOISE_CM = 0.25
+ACCEL_CM_YR2 = -2.0  # parte del cuenco se acelera, para poder probar la vista Aceleración
+ACCEL_OFFSET_M = 2_500.0
+ACCEL_SIGMA_M = 3_000.0
 STEP_DAYS = 24  # 2 ciclos de repetición de NISAR (12 días)
 
 
@@ -41,6 +44,10 @@ def synthetic_subsidence(
     v = -x * np.sin(th) + y * np.cos(th)
     rate = PEAK_RATE_CM_YR * np.exp(-0.5 * ((u / SIGMA_MAJOR_M) ** 2 + (v / SIGMA_MINOR_M) ** 2))
 
+    accel = ACCEL_CM_YR2 * np.exp(
+        -0.5 * (((u - ACCEL_OFFSET_M) ** 2 + v**2) / ACCEL_SIGMA_M**2)
+    )
+
     # Parches de baja coherencia (agua, vegetación densa): umbral sobre ruido suavizado.
     blobs = _smooth_noise(rng, grid.height, grid.width, scale=max(4, grid.width // 24))
     nodata = blobs > np.quantile(blobs, 0.94)
@@ -54,7 +61,7 @@ def synthetic_subsidence(
             continue
         seasonal = SEASONAL_CM * np.sin(2 * np.pi * years)
         noise = rng.normal(0.0, NOISE_CM, size=rate.shape)
-        cube[i] = rate * years + seasonal * (rate / PEAK_RATE_CM_YR) + noise
+        cube[i] = rate * years + accel * years**2 + seasonal * (rate / PEAK_RATE_CM_YR) + noise
     cube[:, nodata] = np.nan
     return cube
 
