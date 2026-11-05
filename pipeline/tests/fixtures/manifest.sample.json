@@ -1,18 +1,40 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedAt": "2026-11-04T00:00:00Z",
   "projection": "EPSG:32611",
   "regions": [
     {
       "id": "mexicali",
       "name": "Mexicali · Cerro Prieto",
-      "bbox": [-115.65, 32.2, -115.0, 32.75],
-      "bboxProjected": [625000.0, 3563000.0, 687000.0, 3625000.0],
+      "bbox": [
+        -115.65,
+        32.2,
+        -115.0,
+        32.75
+      ],
+      "bboxProjected": [
+        625000.0,
+        3563000.0,
+        687000.0,
+        3625000.0
+      ],
       "corners": {
-        "nw": [-115.67, 32.75],
-        "ne": [-115.0, 32.76],
-        "sw": [-115.66, 32.2],
-        "se": [-115.0, 32.21]
+        "nw": [
+          -115.67,
+          32.75
+        ],
+        "ne": [
+          -115.0,
+          32.76
+        ],
+        "sw": [
+          -115.66,
+          32.2
+        ],
+        "se": [
+          -115.0,
+          32.21
+        ]
       },
       "width": 4,
       "height": 4,
@@ -21,7 +43,10 @@
         "path": "mexicali/terrain.bin",
         "encoding": "int16-le",
         "units": "m",
-        "heightRange": [-10.0, 1050.0],
+        "heightRange": [
+          -10.0,
+          1050.0
+        ],
         "credits": [
           {
             "name": "Copernicus DEM GLO-30",
@@ -52,9 +77,14 @@
           "encoding": "int16-le",
           "scale": 0.1,
           "nodata": -32768,
-          "dates": ["2025-10-01", "2025-10-25"],
-          "valueRange": [-12.0, 1.0],
-          "colormap": "diverging-vik",
+          "dates": [
+            "2025-10-01",
+            "2025-10-25"
+          ],
+          "valueRange": [
+            -12.0,
+            1.0
+          ],
           "source": "synthetic",
           "products": [],
           "credits": [
@@ -63,7 +93,12 @@
               "attribution": "No son mediciones NISAR.",
               "url": "pipeline/README.md#modo-sintético"
             }
-          ]
+          ],
+          "theme": "movement",
+          "paint": "diverging",
+          "palette": "vik",
+          "classes": [],
+          "referenceDate": null
         },
         {
           "id": "crops",
@@ -75,11 +110,61 @@
           "encoding": "int16-le",
           "scale": 0.1,
           "nodata": -32768,
-          "dates": ["2025-10-01"],
-          "valueRange": [0.0, 1.0],
-          "colormap": "diverging-vik",
+          "dates": [
+            "2025-10-01"
+          ],
+          "valueRange": [
+            0.0,
+            1.0
+          ],
           "source": "nisar",
-          "products": ["NISAR_L2_EXAMPLE"],
+          "products": [
+            "NISAR_L2_EXAMPLE"
+          ],
+          "credits": [],
+          "theme": "movement",
+          "paint": "diverging",
+          "palette": "vik",
+          "classes": [],
+          "referenceDate": null
+        },
+        {
+          "id": "landcover",
+          "type": "raster",
+          "theme": "impact",
+          "name": "Uso de suelo",
+          "description": "Cobertura.",
+          "units": "clase",
+          "path": "mexicali/landcover/cube.bin",
+          "encoding": "uint8",
+          "scale": 1.0,
+          "nodata": 0,
+          "dates": [],
+          "referenceDate": "2021-01-01",
+          "valueRange": [
+            0.0,
+            5.0
+          ],
+          "paint": "categorical",
+          "palette": "vik",
+          "classes": [
+            {
+              "value": 2,
+              "name": "Cultivos",
+              "color": "#c9a227"
+            }
+          ],
+          "source": "esa-worldcover",
+          "products": [],
+          "credits": []
+        }
+      ],
+      "overlays": [
+        {
+          "id": "roads",
+          "name": "Caminos",
+          "kind": "road",
+          "path": "mexicali/roads.json",
           "credits": []
         }
       ]
@@ -87,13 +172,35 @@
     {
       "id": "tijuana",
       "name": "Tijuana",
-      "bbox": [-117.15, 32.4, -116.8, 32.6],
-      "bboxProjected": [485000.0, 3584000.0, 518000.0, 3606000.0],
+      "bbox": [
+        -117.15,
+        32.4,
+        -116.8,
+        32.6
+      ],
+      "bboxProjected": [
+        485000.0,
+        3584000.0,
+        518000.0,
+        3606000.0
+      ],
       "corners": {
-        "nw": [-117.15, 32.6],
-        "ne": [-116.8, 32.6],
-        "sw": [-117.15, 32.4],
-        "se": [-116.8, 32.4]
+        "nw": [
+          -117.15,
+          32.6
+        ],
+        "ne": [
+          -116.8,
+          32.6
+        ],
+        "sw": [
+          -117.15,
+          32.4
+        ],
+        "se": [
+          -116.8,
+          32.4
+        ]
       },
       "width": 3,
       "height": 2,
@@ -102,7 +209,10 @@
         "path": "tijuana/terrain.bin",
         "encoding": "int16-le",
         "units": "m",
-        "heightRange": [0.0, 600.0],
+        "heightRange": [
+          0.0,
+          600.0
+        ],
         "credits": []
       },
       "pois": [
@@ -116,7 +226,8 @@
           "row": 0.9
         }
       ],
-      "layers": []
+      "layers": [],
+      "overlays": []
     }
   ]
 }

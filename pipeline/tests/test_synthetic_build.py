@@ -33,6 +33,8 @@ def test_run_synthetic_end_to_end(tmp_path):
     cfg = load_config(ROOT / "regions.yaml")
     cfg.output_dir = tmp_path
     cfg.max_grid_size = 64
+    for region in cfg.regions:
+        region.extras = []  # sin red en los tests
 
     def flat_dem(grid):
         return np.full((grid.height, grid.width), 5.0, np.float32)
@@ -41,7 +43,7 @@ def test_run_synthetic_end_to_end(tmp_path):
     m = Manifest.model_validate_json(path.read_text())
     mx, tj = m.regions
     assert mx.layers[0].source == "synthetic"
-    assert tj.layers == []
+    assert tj.layers[0].source == "synthetic"
     raw = (tmp_path / mx.layers[0].path).read_bytes()
     cube = decode_cube(raw, len(mx.layers[0].dates), mx.height, mx.width)
     assert np.nanmin(cube) < -8

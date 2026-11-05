@@ -27,6 +27,11 @@ def write_gunw(
         f[PATHS["sec_time"]] = np.bytes_(f"{sec}T12:51:10.000000000")
         f.create_dataset(PATHS["phase"].format(pol=pol), data=phase.astype(np.float32), chunks=True)
         f.create_dataset(PATHS["coherence"].format(pol=pol), data=coherence.astype(np.float32), chunks=True)
+        f.create_dataset(
+            PATHS["components"].format(pol=pol),
+            data=np.ones(phase.shape, dtype=np.uint16),
+            chunks=True,
+        )
         iono = ionosphere if ionosphere is not None else np.zeros_like(phase)
         f.create_dataset(PATHS["ionosphere"].format(pol=pol), data=iono.astype(np.float32), chunks=True)
     return path

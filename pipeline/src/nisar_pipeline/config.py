@@ -42,9 +42,14 @@ class LayerConfig(BaseModel):
     product: Literal["GUNW"]
     polarization: Literal["HH", "VV"] = "HH"
     coherence_threshold: float = Field(default=0.3, ge=0, le=1)
-    ionosphere_correction: bool = True
+    # Restarla par por par acumula su error en la cadena: ver design.md
+    ionosphere_correction: bool = False
     reference_bbox: BBox
     stack: StackConfig | None = None
+    # Stack de la otra órbita, para separar vertical y este-oeste.
+    secondary_stack: StackConfig | None = None
+    # Radio alrededor del centro que no se usa al quitar la rampa, para no absorber la señal.
+    deramp_exclude_km: float = Field(default=0, ge=0)
 
     _v_ref = field_validator("reference_bbox")(lambda cls, v: _check_bbox(v))
 
@@ -56,6 +61,10 @@ class RegionConfig(BaseModel):
     date_range: tuple[date, date]
     pois: list[Poi] = []
     layers: list[LayerConfig] = []
+    # capas auxiliares: slope, active-slopes, landcover, population, infrastructure,
+    # surface (GCOV), moisture (SME2), disturbance (coherencia GUNW)
+    extras: list[str] = []
+    surface_stack: StackConfig | None = None
 
     _v_bbox = field_validator("bbox")(lambda cls, v: _check_bbox(v))
 

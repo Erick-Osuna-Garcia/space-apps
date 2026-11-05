@@ -11,7 +11,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "manifest.sample.json"
 
 def test_fixture_validates():
     m = Manifest.model_validate_json(FIXTURE.read_text())
-    assert m.schemaVersion == 1
+    assert m.schemaVersion == 2
     assert [r.id for r in m.regions] == ["mexicali", "tijuana"]
 
 

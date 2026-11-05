@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 LonLat = tuple[float, float]
 
@@ -46,21 +46,39 @@ class Terrain(_Model):
     credits: list[Credit]
 
 
+class LayerClass(_Model):
+    value: int
+    name: str
+    color: str
+
+
 class Layer(_Model):
     id: str
-    type: str  # p. ej. "los-displacement"; la web ignora tipos desconocidos
+    type: str  # "los-displacement" o "raster"; la web ignora tipos desconocidos
+    theme: Literal["movement", "surface", "water", "impact"]
     name: str
     description: str
-    units: Literal["cm"]
+    units: str
     path: str
-    encoding: Literal["int16-le"] = "int16-le"
+    encoding: Literal["int16-le", "uint8"] = "int16-le"
     scale: float = Field(description="Multiplicador entero -> unidades (mm -> cm = 0.1)")
     nodata: int = -32768
-    dates: list[str]
+    dates: list[str] = Field(description="Vacío = capa estática de una sola banda")
+    referenceDate: str | None = Field(default=None, description="Fecha de una capa estática")
     valueRange: tuple[float, float]
-    colormap: Literal["diverging-vik"] = "diverging-vik"
-    source: Literal["nisar", "sentinel-1", "synthetic"]
+    paint: Literal["diverging", "sequential", "categorical"] = "diverging"
+    palette: Literal["vik", "heat", "gray", "greens", "blues"] = "vik"
+    classes: list[LayerClass] = []
+    source: Literal["nisar", "sentinel-1", "synthetic", "derived", "esa-worldcover", "worldpop"]
     products: list[str]
+    credits: list[Credit]
+
+
+class Overlay(_Model):
+    id: str
+    name: str
+    kind: Literal["road", "canal"]
+    path: str
     credits: list[Credit]
 
 
@@ -76,10 +94,11 @@ class Region(_Model):
     terrain: Terrain
     pois: list[PoiOut]
     layers: list[Layer]
+    overlays: list[Overlay] = []
 
 
 class Manifest(_Model):
-    schemaVersion: Literal[1] = SCHEMA_VERSION
+    schemaVersion: Literal[2] = SCHEMA_VERSION
     generatedAt: str
     projection: str
     regions: list[Region]

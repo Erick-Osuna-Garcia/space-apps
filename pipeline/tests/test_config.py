@@ -14,7 +14,7 @@ def test_repo_config_is_valid():
     ids = {r.id: r for r in cfg.regions}
     assert set(ids) == {"mexicali", "tijuana"}
     assert [layer.id for layer in ids["mexicali"].layers] == ["subsidence"]
-    assert ids["tijuana"].layers == []
+    assert [layer.id for layer in ids["tijuana"].layers] == ["subsidence"]
     assert cfg.output_dir == (ROOT.parent / "public" / "data").resolve()
 
 

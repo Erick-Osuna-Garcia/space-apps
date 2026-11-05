@@ -30,6 +30,7 @@ PATHS = {
     "phase": UNW + "/{pol}/unwrappedPhase",
     "coherence": UNW + "/{pol}/coherenceMagnitude",
     "ionosphere": UNW + "/{pol}/ionospherePhaseScreen",
+    "components": UNW + "/{pol}/connectedComponents",
 }
 
 
@@ -42,6 +43,7 @@ class GunwSubset:
     phase: np.ndarray  # rad, (rows, cols), NaN = sin dato
     coherence: np.ndarray
     ionosphere: np.ndarray  # rad
+    components: np.ndarray  # componentes conexas del desenvolvimiento; 0 = sin componente
     x: np.ndarray  # centros de píxel (m)
     y: np.ndarray
     epsg: int
@@ -55,7 +57,7 @@ class GunwSubset:
         tmp = path.with_suffix(".tmp.npz")
         np.savez_compressed(
             tmp, phase=self.phase, coherence=self.coherence, ionosphere=self.ionosphere,
-            x=self.x, y=self.y, epsg=self.epsg, wavelength_m=self.wavelength_m,
+            components=self.components, x=self.x, y=self.y, epsg=self.epsg, wavelength_m=self.wavelength_m,
             ref_date=self.ref_date, sec_date=self.sec_date,
         )
         tmp.replace(path)
@@ -65,7 +67,7 @@ class GunwSubset:
         with np.load(path) as z:
             return cls(
                 phase=z["phase"], coherence=z["coherence"], ionosphere=z["ionosphere"],
-                x=z["x"], y=z["y"], epsg=int(z["epsg"]), wavelength_m=float(z["wavelength_m"]),
+                components=z["components"], x=z["x"], y=z["y"], epsg=int(z["epsg"]), wavelength_m=float(z["wavelength_m"]),
                 ref_date=str(z["ref_date"]), sec_date=str(z["sec_date"]),
             )
 
@@ -103,6 +105,9 @@ def read_subset(f: h5py.File, grid: Grid, pol: str = "HH", margin_px: int = 3) -
         phase=band("phase"),
         coherence=band("coherence"),
         ionosphere=band("ionosphere"),
+        components=np.asarray(
+            f[PATHS["components"].format(pol=pol)][rows, cols], dtype=np.uint16
+        ),
         x=x[cols].astype(np.float64),
         y=y[rows].astype(np.float64),
         epsg=epsg,
@@ -110,6 +115,14 @@ def read_subset(f: h5py.File, grid: Grid, pol: str = "HH", margin_px: int = 3) -
         ref_date=_str(f[PATHS["ref_time"]])[:10],
         sec_date=_str(f[PATHS["sec_time"]])[:10],
     )
+
+
+def main_component_mask(components: np.ndarray) -> np.ndarray:
+    """True en la componente conexa más grande: entre componentes la fase no es comparable."""
+    labels, counts = np.unique(components[components > 0], return_counts=True)
+    if labels.size == 0:
+        return np.zeros(components.shape, dtype=bool)
+    return components == labels[np.argmax(counts)]
 
 
 def resample(sub: GunwSubset, arr: np.ndarray, grid: Grid) -> np.ndarray:

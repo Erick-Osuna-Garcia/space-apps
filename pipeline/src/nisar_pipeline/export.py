@@ -77,7 +77,8 @@ def decode_cube(raw: bytes, n_dates: int, height: int, width: int) -> np.ndarray
 
 def write_bin(path: Path, arr: np.ndarray) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
-    data = np.ascontiguousarray(arr, dtype="<i2").tobytes()
+    dtype = np.uint8 if arr.dtype == np.uint8 else "<i2"
+    data = np.ascontiguousarray(arr, dtype=dtype).tobytes()
     path.write_bytes(data)
     return len(data)
 
@@ -95,7 +96,11 @@ def write_manifest(out_dir: Path, manifest: Manifest) -> Path:
     missing = [
         p
         for r in manifest.regions
-        for p in [r.terrain.path, *(layer.path for layer in r.layers)]
+        for p in [
+            r.terrain.path,
+            *(layer.path for layer in r.layers),
+            *(o.path for o in r.overlays),
+        ]
         if not (out_dir / p).is_file()
     ]
     if missing:

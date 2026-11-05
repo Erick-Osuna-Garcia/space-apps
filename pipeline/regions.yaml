@@ -2,7 +2,7 @@
 output_dir: ../public/data
 cache_dir: .cache
 max_grid_size: 512        # celdas en el lado mayor de la grilla de cada región
-size_budget_mb: 15        # presupuesto de assets por región
+size_budget_mb: 80        # presupuesto de assets por región
 projection: EPSG:32611    # UTM 11N, cubre Mexicali y Tijuana
 
 regions:
@@ -10,6 +10,8 @@ regions:
     name: Mexicali · Cerro Prieto
     bbox: [-115.65, 32.20, -115.00, 32.75]
     date_range: ["2025-10-01", "2026-10-31"]
+    extras: [slope, active-slopes, landcover, population, infrastructure, disturbance, decomposition, surface, moisture]
+    surface_stack: {relative_orbit: 85, frame: 72}
     pois:
       - id: cerro-prieto
         name: Planta geotérmica Cerro Prieto
@@ -28,15 +30,30 @@ regions:
         coherence_threshold: 0.3
         # Zona estable de referencia (roca de la Sierra Cucapah). Verificar visualmente con la coherencia.
         reference_bbox: [-115.42, 32.30, -115.38, 32.34]
+        # 85/72 descendente: 26 pares, cubre 95 % de la región (5/18 solo cubre 53 %)
+        stack: {relative_orbit: 85, frame: 72}
+        # 106/18 ascendente: 22 pares, cubre 100 %; sirve para separar vertical y este-oeste
+        secondary_stack: {relative_orbit: 106, frame: 18}
+        deramp_exclude_km: 14
 
   - id: tijuana
     name: Tijuana
     bbox: [-117.15, 32.40, -116.80, 32.60]
     date_range: ["2025-10-01", "2026-10-31"]
+    extras: [slope, active-slopes, landcover, population, infrastructure, disturbance, decomposition, surface, moisture]
+    surface_stack: {relative_orbit: 85, frame: 72}
     pois:
       - id: tijuana-centro
         name: Tijuana
         lon: -117.0382
         lat: 32.5149
-        description: Fenómenos de esta región (expansión urbana, Río Tijuana) llegarán próximamente.
-    layers: []
+        description: Ciudad fronteriza sobre cañones y laderas.
+    layers:
+      - id: subsidence
+        type: los-displacement
+        product: GUNW
+        coherence_threshold: 0.3
+        # Zona de cerros al este de la ciudad; se revisa con la coherencia real.
+        reference_bbox: [-116.86, 32.50, -116.82, 32.54]
+        stack: {relative_orbit: 85, frame: 72}
+        secondary_stack: {relative_orbit: 106, frame: 18}

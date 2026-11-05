@@ -74,7 +74,7 @@ def earthdata_opener(source: str) -> Opener:
 
 
 def _cache_path(cache_dir: Path, product: Product, grid: Grid, pol: str) -> Path:
-    key = hashlib.sha1(f"{grid.crs}{grid.bounds}{pol}".encode()).hexdigest()[:10]
+    key = hashlib.sha1(f"v2{grid.crs}{grid.bounds}{pol}".encode()).hexdigest()[:10]
     return cache_dir / f"{product.id}.{key}.npz"
 
 

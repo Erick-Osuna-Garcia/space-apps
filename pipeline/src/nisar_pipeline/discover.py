@@ -36,6 +36,7 @@ class Product:
     processing_date: str
     bytes: int
     covers_center: bool
+    coverage: float = 1.0  # fracción del bbox de la región que cubre el producto
 
 
 @dataclass
@@ -71,7 +72,7 @@ def _wkt(bbox) -> str:
     return box(*bbox).wkt
 
 
-def _to_product(result, center: Point) -> Product | None:
+def _to_product(result, center: Point, area=None) -> Product | None:
     pr = result.properties
     name = pr["sceneName"]
     times = _TIMES.findall(name)
@@ -93,6 +94,9 @@ def _to_product(result, center: Point) -> Product | None:
         processing_date=str(pr.get("processingDate", "")),
         bytes=int(size or 0),
         covers_center=shape(result.geometry).contains(center),
+        coverage=round(shape(result.geometry).intersection(area).area / area.area, 3)
+        if area is not None
+        else 1.0,
     )
 
 
@@ -116,7 +120,8 @@ def discover(
         end=criteria["end"],
     )
     pt = Point(*center)
-    products = [p for r in results if (p := _to_product(r, pt)) is not None]
+    area = box(*region.bbox)
+    products = [p for r in results if (p := _to_product(r, pt, area)) is not None]
     products = [
         p for p in products
         if start.isoformat() <= p.ref_date and p.sec_date <= end.isoformat()
@@ -133,12 +138,14 @@ def discover(
         stacks.append({
             "relative_orbit": orbit, "frame": frame, "direction": ps[0].direction,
             "products": len(ps), "pairs": len(pairs),
+            "coverage": round(sum(p.coverage for p in ps) / len(ps), 3),
         })
 
     if layer.stack:
         key = (layer.stack.relative_orbit, layer.stack.frame)
     elif stacks:
-        best = max(stacks, key=lambda s: (s["pairs"], -s["relative_orbit"]))
+        # un stack con muchos pares que cubre media región sirve menos que uno completo
+        best = max(stacks, key=lambda s: (s["pairs"] * s["coverage"], -s["relative_orbit"]))
         key = (best["relative_orbit"], best["frame"])
     else:
         key = None
@@ -146,7 +153,7 @@ def discover(
     chosen_products: list[Product] = []
     if key and key in by_stack:
         latest: dict[tuple[str, str], Product] = {}
-        for p in sorted(by_stack[key], key=lambda p: p.processing_date):
+        for p in sorted(by_stack[key], key=lambda p: (p.coverage, p.processing_date)):
             latest[(p.ref_date, p.sec_date)] = p
         chosen_products = sorted(latest.values(), key=lambda p: (p.ref_date, p.sec_date))
 

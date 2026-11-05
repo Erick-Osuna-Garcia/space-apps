@@ -73,8 +73,12 @@ def test_manifest_rejects_missing_files(tmp_path):
 def test_manifest_written_when_files_exist(tmp_path):
     m = Manifest.model_validate_json(FIXTURE.read_text())
     for r in m.regions:
-        for p in [r.terrain.path, *(layer.path for layer in r.layers)]:
+        for p in [
+            r.terrain.path,
+            *(layer.path for layer in r.layers),
+            *(o.path for o in r.overlays),
+        ]:
             (tmp_path / p).parent.mkdir(parents=True, exist_ok=True)
             (tmp_path / p).write_bytes(b"\0\0")
     out = write_manifest(tmp_path, m)
-    assert json.loads(out.read_text())["schemaVersion"] == 1
+    assert json.loads(out.read_text())["schemaVersion"] == 2

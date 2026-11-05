@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -22,8 +22,10 @@ from .export import (
     write_bin,
     write_manifest,
 )
+from .extras import build_extras
 from .grid import Grid, make_grid
 from .synthetic import synthetic_dates, synthetic_subsidence
+from .timeseries import velocity_from_cube
 
 log = logging.getLogger(__name__)
 
@@ -46,6 +48,7 @@ class LayerPlan:
     products: list[str]
     credits: list[mf.Credit]
     build: Callable[[Grid], np.ndarray]  # -> (T, H, W) cm, NaN = sin dato
+    aux: dict = field(default_factory=dict)  # datos para capas derivadas (p. ej. coherencia)
 
 
 Planner = Callable[[PipelineConfig, RegionConfig, LayerConfig], LayerPlan]
@@ -81,8 +84,13 @@ def build_region(
     total = write_bin(out_dir / terrain_path, encode_terrain(dem))
 
     layers_out: list[mf.Layer] = []
+    velocity = None
+    aux: dict = {}
     for plan in plans:
         cube = plan.build(grid)
+        if plan.config.type == "los-displacement":
+            velocity = velocity_from_cube(cube, plan.dates)
+            aux = plan.aux
         expected = (len(plan.dates), grid.height, grid.width)
         if cube.shape != expected:
             raise ValueError(f"{region.id}/{plan.config.id}: cubo {cube.shape} != {expected}")
@@ -94,13 +102,15 @@ def build_region(
             mf.Layer(
                 id=plan.config.id,
                 type=plan.config.type,
+                theme="movement",
                 name=name,
                 description=description,
                 units="cm",
                 path=path,
                 scale=0.1,
                 dates=[d.isoformat() for d in plan.dates],
-                valueRange=(round(float(valid.min()), 2), round(float(valid.max()), 2))
+                # percentiles: unos pocos píxeles extremos no deben aplanar la escala de color
+                valueRange=tuple(round(float(v), 2) for v in np.percentile(valid, [0.1, 99.9]))
                 if valid.size
                 else (0.0, 0.0),
                 source=plan.source,
@@ -108,6 +118,10 @@ def build_region(
                 credits=plan.credits,
             )
         )
+    extra_layers, overlays = build_extras(cfg, region, grid, dem, velocity, out_dir, aux)
+    for extra in extra_layers:
+        total += write_bin(out_dir / extra.layer.path, extra.data)
+        layers_out.append(extra.layer)
     check_budget(region.id, total, budget)
     log.info("%s: %.2f MB de assets", region.id, total / 1e6)
 
@@ -135,6 +149,7 @@ def build_region(
         ),
         pois=pois,
         layers=layers_out,
+        overlays=overlays,
     )
 
 
