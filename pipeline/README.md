@@ -65,7 +65,7 @@ Para revisar la cobertura a mano antes de correrlo, usa [Vertex](https://search.
 
 | Stack | Dirección | Pares | Cobertura Mexicali | Uso |
 |---|---|---|---|---|
-| **85/72** | Descendente | 26 | 95 % | Principal (Mexicali y Tijuana) |
+| **85/72** | Descendente | 26 | 95 % | Principal |
 | **106/18** | Ascendente | 22 | 100 % | Segundo, para vertical y este-oeste |
 | 5/18 | Ascendente | 27 | 53 % | Descartado: deja fuera la referencia |
 | 157/72 | Descendente | 13 | 100 % | Descartado: pocos pares |
@@ -88,8 +88,8 @@ Para revisar la cobertura a mano antes de correrlo, usa [Vertex](https://search.
 | Campo | Significado |
 |---|---|
 | `max_grid_size` | Celdas en el lado mayor de la grilla de cada región (por defecto 512). |
-| `size_budget_mb` | Presupuesto de assets por región (hoy ~52 MB en Mexicali y ~35 MB en Tijuana). |
-| `projection` | CRS métrico común (UTM 11N cubre Mexicali y Tijuana). |
+| `size_budget_mb` | Presupuesto de assets por región (hoy ~52 MB). |
+| `projection` | CRS métrico (UTM 11N). |
 | `regions[].bbox` | `[minLon, minLat, maxLon, maxLat]` WGS84. |
 | `regions[].layers[]` | Capa de desplazamiento (GUNW), con `stack` y `secondary_stack`. |
 | `regions[].extras` | Capas adicionales: `slope`, `active-slopes`, `landcover`, `population`, `infrastructure`, `disturbance`, `decomposition`, `surface` (GCOV), `moisture` (SME2). Si una falla, se registra y las demás se generan. |
@@ -104,7 +104,9 @@ Todos los binarios son **Int16 little-endian**, en orden fila-mayor, con la fila
 | `<region>/terrain.bin` | `height × width` | metros |
 | `<region>/<capa>/cube.bin` | `fechas × height × width` | mm (multiplicar por `scale` = 0.1 para obtener cm). `-32768` = sin dato. |
 
-`manifest.json` (esquema v1, ver `src/nisar_pipeline/manifest.py`) describe por región el bbox, las esquinas lon/lat de la grilla, el tamaño de celda, los POIs en coordenadas de grilla y, por capa, las fechas, el rango de valores, `source` (`nisar`, `sentinel-1` o `synthetic`), los ids de productos fuente y los créditos. El esquema se espeja en `src/features/explorer/manifest.ts`, y ambos lados validan `tests/fixtures/manifest.sample.json`.
+`manifest.json` (esquema v2, ver `src/nisar_pipeline/manifest.py`) describe por región el bbox, las esquinas lon/lat de la grilla, el tamaño de celda, los POIs en coordenadas de grilla y, por capa, las fechas, el rango de valores, `source` (`nisar`, `sentinel-1` o `synthetic`), los ids de productos fuente y los créditos. El esquema se espeja en `src/features/explorer/manifest.ts`, y ambos lados validan `tests/fixtures/manifest.sample.json`.
+
+`<región>/events.json` guarda los eventos de impacto que calcula `events.py` a partir de las capas NISAR. La historia con Sentinel-1 (`opera.py`, clave `history` de la capa) es opcional y `regions.yaml` no la activa.
 
 Si se re-ejecuta con los mismos datos, se obtienen archivos idénticos: `generatedAt` solo cambia si cambia el contenido.
 
