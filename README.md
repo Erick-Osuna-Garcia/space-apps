@@ -43,6 +43,8 @@ El botón Eventos lista lo que cambió, agrupado por tipo: zonas de hundimiento,
 
 ## Estructura
 
+Qué hace cada función, cómo y por qué: [`docs/funciones.md`](docs/funciones.md).
+
 - `src/features/explorer/`: escena 3D (React Three Fiber), UI y análisis de datos.
 - `pipeline/`: pipeline offline en Python que convierte NISAR y el DEM en assets estáticos.
 - `public/data/`: assets generados.
