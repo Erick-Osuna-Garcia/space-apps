@@ -93,6 +93,7 @@ Para revisar la cobertura a mano antes de correrlo, usa [Vertex](https://search.
 | `regions[].bbox` | `[minLon, minLat, maxLon, maxLat]` WGS84. |
 | `regions[].layers[]` | Capa de desplazamiento (GUNW), con `stack` y `secondary_stack`. |
 | `regions[].extras` | Capas adicionales: `slope`, `active-slopes`, `landcover`, `population`, `infrastructure`, `disturbance`, `decomposition`, `surface` (GCOV), `moisture` (SME2). Si una falla, se registra y las demás se generan. |
+| `infrastructure` | Escribe `roads.json`, `canals.json` y, si OpenStreetMap responde, `rivers.json` (`waterway=river`). El overlay de ríos es opcional: sin ese archivo la app sigue con canales y agua. No hace falta reprocesar NISAR para agregarlo. |
 | `layers[].reference_bbox` | Zona estable (roca) que se usa como referencia de desplazamiento 0. |
 
 ## Formato de assets

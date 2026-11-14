@@ -45,9 +45,17 @@ export function PoiMarkers({ pois, heightAt, labels }: PoiMarkersProps) {
 							<cylinderGeometry args={[0.1, 0.1, LABEL_HEIGHT - 1, 6]} />
 							<meshBasicMaterial color="#fbbf24" transparent opacity={0.55} />
 						</mesh>
-						<mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.2, 0]}>
+						<mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 1.6, 0]}>
 							<ringGeometry args={[0.75, 1, 24]} />
-							<meshBasicMaterial color="#fbbf24" transparent opacity={0.8} />
+							<meshBasicMaterial
+								color="#fbbf24"
+								transparent
+								opacity={0.9}
+								side={THREE.DoubleSide}
+								polygonOffset
+								polygonOffsetFactor={-4}
+								polygonOffsetUnits={-4}
+							/>
 						</mesh>
 					</group>
 				);

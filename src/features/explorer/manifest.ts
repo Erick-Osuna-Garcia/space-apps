@@ -79,7 +79,7 @@ const RawLayer = z.object({
 const Overlay = z.object({
 	id: z.string(),
 	name: z.string(),
-	kind: z.enum(["road", "canal"]),
+	kind: z.enum(["road", "canal", "river"]),
 	path: z.string(),
 	credits: z.array(Credit),
 });

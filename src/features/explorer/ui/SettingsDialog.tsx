@@ -38,7 +38,7 @@ function Row({
 	onChange: (v: boolean) => void;
 }) {
 	return (
-		<div className="flex items-center justify-between gap-4 py-1.5">
+		<div className="flex min-h-11 items-center justify-between gap-3 py-1.5">
 			<label htmlFor={id} className="min-w-0">
 				<span className="block font-semibold text-slate-100 text-sm">
 					{label}
@@ -81,14 +81,14 @@ export function SettingsDialog({
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Overlay className="fixed inset-0 z-40 bg-black/50" />
-				<Dialog.Content className="-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50 max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm overflow-y-auto rounded-2xl border border-white/10 bg-slate-950 p-5 text-slate-100 shadow-2xl">
+				<Dialog.Content className="-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50 max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem))] w-[calc(100%-2rem)] max-w-sm overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-slate-950 p-5 text-slate-100 shadow-2xl">
 					<div className="flex items-center justify-between">
-						<Dialog.Title className="font-extrabold text-lg text-white">
+						<Dialog.Title className="text-pretty font-extrabold text-lg text-white">
 							Ajustes
 						</Dialog.Title>
 						<Dialog.Close
 							aria-label="Cerrar ajustes"
-							className="rounded-lg p-1 text-slate-400 transition hover:bg-white/10 hover:text-white"
+							className="inline-flex size-11 items-center justify-center rounded-lg text-slate-400 transition-[color,background-color] hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-cyan-300"
 						>
 							<X className="size-5" aria-hidden />
 						</Dialog.Close>

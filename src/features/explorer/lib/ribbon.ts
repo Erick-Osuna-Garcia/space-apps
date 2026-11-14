@@ -16,6 +16,7 @@ export const ROAD_STYLES: RoadStyle[] = [
 	{ id: "primary", halfWidth: 0.15, maxCells: 400, color: "#f1f5f9" },
 	{ id: "secondary", halfWidth: 0.1, maxCells: 200, color: "#cbd5e1" },
 	{ id: "canal", halfWidth: 0.13, maxCells: 400, color: "#38bdf8" },
+	{ id: "river", halfWidth: 0.16, maxCells: 400, color: "#1d4ed8" },
 ];
 
 const FALLBACK_CLASS = ROAD_STYLES.findIndex((s) => s.id === "secondary");
@@ -145,6 +146,6 @@ export function buildRibbon(
 /** Resaltado por vértice a partir de los tramos afectados. */
 export function ribbonHits(segment: Uint32Array, flags: Uint8Array) {
 	const out = new Float32Array(segment.length);
-	for (let i = 0; i < segment.length; i++) out[i] = flags[segment[i]] ? 1 : 0;
+	for (let i = 0; i < segment.length; i++) out[i] = flags[segment[i]] ?? 0;
 	return out;
 }

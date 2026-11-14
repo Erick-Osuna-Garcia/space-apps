@@ -1,4 +1,5 @@
 import { ExternalLink, X } from "lucide-react";
+import { CROP_VARIANTS } from "../lib/mapModels";
 import type { Layer, Region } from "../manifest";
 import { InfoHint } from "./InfoHint";
 import { Panel, PanelTitle } from "./Panel";
@@ -58,20 +59,20 @@ export function SidePanel({
 		<Panel
 			role="complementary"
 			aria-label={title}
-			className="flex max-h-full w-full flex-col overflow-hidden sm:w-[26rem]"
+			className="flex max-h-[min(42dvh,22rem)] w-full flex-col overflow-hidden sm:max-h-full sm:w-[26rem]"
 		>
-			<div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-				<PanelTitle>{title}</PanelTitle>
+			<div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3">
+				<PanelTitle className="min-w-0 text-pretty">{title}</PanelTitle>
 				<button
 					type="button"
 					onClick={onClose}
 					aria-label="Cerrar"
-					className="rounded-lg p-1 text-slate-400 transition hover:bg-white/10 hover:text-white"
+					className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-[color,background-color] hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-cyan-300"
 				>
 					<X className="size-4" aria-hidden />
 				</button>
 			</div>
-			<div className="overflow-y-auto px-4 py-3 text-sm leading-relaxed text-slate-300">
+			<div className="overflow-y-auto overscroll-contain px-4 py-3 text-sm leading-relaxed text-slate-300">
 				{children}
 			</div>
 		</Panel>
@@ -121,10 +122,35 @@ export function ContextContent() {
 					y este-oeste, y los cambios bruscos. <strong>Superficie</strong>:
 					construcción, vegetación y cambios, con las polarizaciones HH y HV.{" "}
 					<strong>Agua</strong>: agua en superficie y humedad del suelo.{" "}
-					<strong>Impacto</strong>: pendiente, población, uso de suelo y, sobre
-					cualquier capa, caminos y canales. Toca un punto para ver qué dice
-					cada capa de ese lugar. Estas capas señalan patrones y exposición; no
-					evalúan daños ni riesgo.
+					<strong>Impacto</strong>: pendiente, población y uso de suelo. Sobre
+					cualquier capa van caminos, canales y, si el dato existe, ríos. El
+					botón Cultivos abre las zonas agrícolas sin cambiar la capa de
+					movimiento. Ciudad de Mexicali se sombrea en ámbar. Toca un punto
+					para ver qué dice cada capa de ese lugar. Estas capas señalan
+					patrones y exposición; no evalúan daños ni riesgo.
+				</p>
+			</section>
+			<section>
+				<h3>Modelos del mapa</h3>
+				<p>
+					Las plantas, las casas, los edificios y los autos son figuras sobre el
+					terreno. No son una medición del radar y no cambian los centímetros
+					de la sonda.
+				</p>
+				<p>
+					Las plantas aparecen al abrir Cultivos, sobre la clase Cultivos de
+					2021. Si el bloque es grande se sientan juntas, de una a cinco, y
+					todo el grupo es la misma variante. Un parche chico lleva una sola.
+					Las variantes ilustran lo que se cultiva en el Valle de Mexicali:{" "}
+					{CROP_VARIANTS.map((variant) => variant.label).join(", ")}. El mapa no
+					dice cuál de ellas está en cada parcela. Trigo y alfalfa ocupan más
+					grupos porque son los de mayor superficie en la región.
+				</p>
+				<p>
+					Las casas y los edificios salen de la clase Zona urbana, con el mismo
+					agrupado: de una a cinco donde el bloque es grande. Los autos van
+					sobre las vías principales y miran a lo largo del camino. No se ponen
+					en canales ni en ríos.
 				</p>
 			</section>
 			<section>
@@ -188,6 +214,24 @@ export function CreditsContent({
 					</li>
 				))}
 			</ul>
+			<section>
+				<p className="font-semibold text-white">Modelos del terreno</p>
+				<p className="text-xs text-slate-400">
+					Figuras ilustrativas, no un producto de satélite. El sitio de las
+					plantas y de las casas sale de ESA WorldCover 2021 (clases Cultivos y
+					Zona urbana). Los autos siguen las vías de OpenStreetMap. La lista de
+					cultivos es la del Valle de Mexicali publicada por la Secretaría de
+					Agricultura y Desarrollo Rural; no es un censo de cada parcela.
+				</p>
+				<a
+					href="https://www.gob.mx/agricultura"
+					target="_blank"
+					rel="noreferrer"
+					className="mt-0.5 inline-flex items-center gap-1 text-xs text-cyan-300 hover:text-cyan-200"
+				>
+					gob.mx <ExternalLink className="size-3" aria-hidden />
+				</a>
+			</section>
 			{layer && layer.products.length > 0 && (
 				<details>
 					<summary className="cursor-pointer text-xs font-semibold text-slate-200">
@@ -223,7 +267,7 @@ export function WarpOverlay({
 
 export function ControlsHint({ compact }: { compact: boolean }) {
 	return (
-		<p className="pointer-events-none rounded-xl bg-slate-950/60 px-3 py-1.5 text-xs text-slate-300 backdrop-blur">
+		<p className="pointer-events-none rounded-xl bg-slate-950/60 px-3 py-1.5 text-pretty text-xs text-slate-300 backdrop-blur">
 			{compact ? (
 				"Toca el terreno para volar · pellizca para zoom"
 			) : (

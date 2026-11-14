@@ -14,8 +14,10 @@ export function DateTitle({ date, subtitle, announce }: DateTitleProps) {
 			aria-live={announce ? "polite" : "off"}
 			className="date-title pointer-events-none text-center"
 		>
-			<p className="date-title-main text-4xl sm:text-6xl">{date}</p>
-			<p className="date-title-sub mt-1 text-base sm:text-xl">{subtitle}</p>
+			<p className="date-title-main text-balance text-3xl sm:text-6xl">{date}</p>
+			<p className="date-title-sub mt-1 text-pretty text-sm sm:text-xl">
+				{subtitle}
+			</p>
 		</div>
 	);
 }

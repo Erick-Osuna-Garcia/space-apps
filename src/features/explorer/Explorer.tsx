@@ -19,6 +19,23 @@ import {
 	usePrefersReducedMotion,
 } from "./hooks/useMedia";
 import {
+	alignSeries,
+	barrierMask,
+	buildZones,
+	changeWord,
+	cropMask,
+	disturbanceWord,
+	listedZones,
+	moistureSeries,
+	nearestWaterway,
+	paintWayFlags,
+	vegetationWord,
+	waterBeside,
+	waterLines,
+	withComparison,
+	zoneAt,
+} from "./lib/agriculture";
+import {
 	buildCatalog,
 	type CatalogItem,
 	categoricalPlane,
@@ -55,6 +72,7 @@ import {
 	nearestSegment,
 	toSegments,
 } from "./lib/infrastructure";
+import { isCropKind, placeMapModels, urbanCityMask, type CropId, type MapModel } from "./lib/mapModels";
 import { fillForDisplay, robustLimit, velocityField } from "./lib/stats";
 import { waterDateIndex, waterMask } from "./lib/water";
 import type { Overlay, Poi, Region } from "./manifest";
@@ -63,10 +81,13 @@ import { PaintMode } from "./scene/layerMaterial";
 import { Scene } from "./scene/Scene";
 import { baseHeightFn, DEFAULT_EXAGGERATION } from "./scene/terrainGeometry";
 import { explorerStore, layerUi, type MapView, overlayOn } from "./store";
+import { AgriculturePanel } from "./ui/AgriculturePanel";
 import { DateTitle } from "./ui/DateTitle";
 import { EventsList } from "./ui/EventsList";
 import { Inspector, type InspectorRow } from "./ui/Inspector";
 import { LayerPanel } from "./ui/LayerPanel";
+import { MobileDock, type DockItem } from "./ui/MobileDock";
+import { ModelsPanel } from "./ui/ModelsPanel";
 import {
 	ContextContent,
 	ControlsHint,
@@ -112,6 +133,27 @@ const MAIN_LAYER = "main";
 const exaggeration = DEFAULT_EXAGGERATION;
 const store = explorerStore;
 
+function nearestModel(
+	models: MapModel[],
+	kind: CropId,
+	probe: { col: number; row: number } | null,
+) {
+	const hits = models.filter((model) => model.kind === kind);
+	const first = hits[0];
+	if (!first) return null;
+	if (!probe) return hits[Math.floor(hits.length / 2)] ?? first;
+	let best = first;
+	let bestD = Number.POSITIVE_INFINITY;
+	for (const model of hits) {
+		const d = (model.col - probe.col) ** 2 + (model.row - probe.row) ** 2;
+		if (d < bestD) {
+			bestD = d;
+			best = model;
+		}
+	}
+	return best;
+}
+
 export function Explorer() {
 	const [webgl] = useState(hasWebGL2);
 	if (!webgl) return <NoWebGL />;
@@ -141,6 +183,10 @@ function ExplorerScene() {
 	const zoneLabels = useRef(new Map<string, HTMLElement>());
 	const flight = useMemo(createFlight, []);
 	const [layersOpen, setLayersOpen] = useState(false);
+	const [modelsOpen, setModelsOpen] = useState(false);
+	const [modelFocus, setModelFocus] = useState<CropId | null>(null);
+	const pendingFly = useRef<CropId | null>(null);
+	const [compareRejected, setCompareRejected] = useState(false);
 
 	const manifest = useQuery(manifestQuery);
 	const region =
@@ -352,6 +398,7 @@ function ExplorerScene() {
 
 	// Llegada a una región (inicio o tras warp): configurar el vuelo y ubicar la nave.
 	const arrival = useRef<string | null>(DEFAULT_POI);
+	const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
 	const [readyRegion, setReadyRegion] = useState<string | null>(null);
 	useEffect(() => {
 		if (!region || !terrain.data) return;
@@ -382,6 +429,7 @@ function ExplorerScene() {
 		(target: Region, poi: Poi) => {
 			if (target.id === store.state.regionId) {
 				flight.target = { col: poi.col, row: poi.row };
+				setSelectedPoiId(poi.id);
 				return;
 			}
 			if (store.state.warping) return;
@@ -419,6 +467,7 @@ function ExplorerScene() {
 			);
 		}
 		store.actions.setPlaying(false);
+		setSelectedPoiId(null);
 		flight.target = { col: event.col, row: event.row };
 	};
 	const selectItem = (next: CatalogItem) =>
@@ -482,7 +531,8 @@ function ExplorerScene() {
 	});
 	const landData = useQuery({
 		...rasterQuery(region, landLayer),
-		enabled: Boolean(landLayer) && view === "zones",
+		enabled:
+			Boolean(landLayer) && (view === "zones" || region?.id === "mexicali"),
 	});
 	const landNames = useMemo(
 		() =>
@@ -491,6 +541,136 @@ function ExplorerScene() {
 			),
 		[landLayer],
 	);
+
+	const agriOpen = region?.id === "mexicali" && state.agricultureOpen;
+	const findLayer = (id: string) =>
+		region?.layers.find((l) => l.id === id) ?? null;
+	const moistureLayer = findLayer("moisture");
+	const hvLayer = findLayer("hv");
+	const changeLayer = findLayer("change");
+	const disturbanceLayer = findLayer("disturbance");
+	const moistureQ = useQuery({
+		...rasterQuery(region, moistureLayer),
+		enabled: Boolean(agriOpen && moistureLayer),
+	});
+	const hvQ = useQuery({
+		...rasterQuery(region, hvLayer),
+		enabled: Boolean(agriOpen && hvLayer),
+	});
+	const changeQ = useQuery({
+		...rasterQuery(region, changeLayer),
+		enabled: Boolean(agriOpen && changeLayer),
+	});
+	const disturbanceQ = useQuery({
+		...rasterQuery(region, disturbanceLayer),
+		enabled: Boolean(agriOpen && disturbanceLayer),
+	});
+	// biome-ignore lint/correctness/useExhaustiveDependencies: overlaySignature resume overlayData
+	const waterways = useMemo(
+		() =>
+			overlayList.flatMap((overlay, index) => {
+				if (overlay.kind !== "canal" && overlay.kind !== "river") return [];
+				const features = overlayData[index]?.data ?? [];
+				return [
+					{
+						id: overlay.id,
+						kind: overlay.kind,
+						features,
+						segments: toSegments(features, region?.cellSizeM ?? 1),
+					},
+				];
+			}),
+		// overlaySignature resume overlayData, que cambia de identidad en cada render
+		[overlaySignature, overlayList, region?.cellSizeM],
+	);
+	const agriMap = useMemo(() => {
+		if (region?.id !== "mexicali" || !landData.data) return null;
+		const barriers = barrierMask(
+			region.width,
+			region.height,
+			waterways.flatMap((way) => way.features),
+		);
+		return buildZones(
+			landData.data,
+			region.width,
+			region.height,
+			region.cellSizeM,
+			barriers,
+		);
+	}, [region, landData.data, waterways]);
+	const selectedAgri =
+		agriMap?.zones.find((zone) => zone.id === state.agriZoneId) ?? null;
+	const agriMask = useMemo(() => {
+		if (!agriOpen || !agriMap) return null;
+		return cropMask(agriMap.owner, state.agriZoneId);
+	}, [agriOpen, agriMap, state.agriZoneId]);
+	const cityMask = useMemo(() => {
+		if (region?.id !== "mexicali" || !landData.data) return null;
+		const city = region.pois.find((poi) => poi.id === "mexicali-centro");
+		if (!city) return null;
+		return urbanCityMask(
+			landData.data,
+			region.width,
+			region.height,
+			city.col,
+			city.row,
+		);
+	}, [region, landData.data]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: overlaySignature resume overlayData, que cambia de identidad en cada render
+	const mapModels = useMemo(() => {
+		if (region?.id !== "mexicali") return [];
+		const roads = overlayList.flatMap((overlay, index) =>
+			overlay.kind === "road" ? (overlayData[index]?.data ?? []) : [],
+		);
+		return placeMapModels({
+			landcover: landData.data ?? null,
+			width: region.width,
+			height: region.height,
+			roads,
+			crops: agriOpen,
+			settlements: Boolean(landData.data),
+			cars: roads.length > 0,
+		});
+	}, [region, landData.data, overlayList, overlaySignature, agriOpen]);
+	useEffect(() => {
+		const id = pendingFly.current;
+		if (!id) return;
+		const hit = nearestModel(mapModels, id, state.probe);
+		if (!hit) return;
+		pendingFly.current = null;
+		flight.target = { col: hit.col, row: hit.row };
+	}, [mapModels, state.probe, flight]);
+	const modelCounts = useMemo(() => {
+		const counts: Partial<Record<CropId, number>> = {};
+		for (const model of mapModels) {
+			if (!isCropKind(model.kind)) continue;
+			counts[model.kind] = (counts[model.kind] ?? 0) + 1;
+		}
+		return counts;
+	}, [mapModels]);
+	useEffect(() => {
+		if (!selectedAgri) return;
+		flight.target = { col: selectedAgri.col, row: selectedAgri.row };
+	}, [selectedAgri, flight]);
+	const wayHit = useMemo(() => {
+		if (!selectedAgri || !region) return null;
+		return nearestWaterway(
+			selectedAgri.cells,
+			region.width,
+			region.cellSizeM,
+			waterways,
+		);
+	}, [selectedAgri, region, waterways]);
+	const moistureIndex = moistureLayer
+		? Math.max(nearestDateIndex(moistureLayer.dates, currentDate), 0)
+		: 0;
+	const signalIndex = (dates: string[]) =>
+		Math.max(nearestDateIndex(dates, currentDate), 0);
+	const agriPlane = region ? region.width * region.height : 0;
+	const asInt16 = (data: Int16Array | Uint8Array | undefined) =>
+		data instanceof Int16Array ? data : null;
+	const asBytes = (data: Int16Array | Uint8Array | undefined) =>
+		data instanceof Uint8Array ? data : null;
 
 	// El inspector lee todas las capas de la región al tocar un punto.
 	const inspectQueries = useQueries({
@@ -561,7 +741,12 @@ function ExplorerScene() {
 			if (seg) {
 				const f = o.features[seg.feature];
 				inspectorRows.push({
-					name: o.kind === "canal" ? "Canal" : "Camino",
+					name:
+						o.kind === "canal"
+							? "Canal"
+							: o.kind === "river"
+								? "Río"
+								: "Camino",
 					value: f.name || f.class,
 				});
 			}
@@ -595,10 +780,188 @@ function ExplorerScene() {
 	const currentSource = shownLayer ? sourceAt(shownLayer, currentDate) : null;
 
 	const sceneReady = terrain.data && readyRegion === region.id;
+	const agriList = agriMap
+		? listedZones(agriMap.zones)
+		: { listed: [], omitted: false };
+	const selectedSeries =
+		selectedAgri && moistureLayer
+			? moistureSeries(
+					selectedAgri.cells,
+					asInt16(moistureQ.data),
+					moistureLayer.dates.length,
+					agriPlane,
+					moistureLayer.scale,
+					moistureLayer.nodata,
+				)
+			: [];
+	const compareColumns = [selectedAgri?.id, ...state.agriCompare]
+		.filter((id): id is number => id !== undefined)
+		.flatMap((id) => {
+			const zone = agriMap?.zones[id];
+			if (!zone || !moistureLayer) return [];
+			return [
+				{
+					id,
+					areaKm2: zone.areaKm2,
+					values: moistureSeries(
+						zone.cells,
+						asInt16(moistureQ.data),
+						moistureLayer.dates.length,
+						agriPlane,
+						moistureLayer.scale,
+						moistureLayer.nodata,
+					),
+				},
+			];
+		});
+	const compared = alignSeries(
+		compareColumns.map((column) => ({
+			dates: moistureLayer?.dates ?? [],
+			values: column.values,
+		})),
+	);
+	const waterIndex = waterLayer
+		? Math.max(nearestDateIndex(waterLayer.dates, currentDate), 0)
+		: 0;
+	const waterTouch =
+		selectedAgri && waterData.data
+			? waterBeside(
+					selectedAgri.cells,
+					categoricalPlane(waterData.data, agriPlane, waterIndex),
+					region.width,
+					region.height,
+				)
+			: { permanent: false, fresh: false };
+	const agriWater = selectedAgri
+		? waterLines(
+				wayHit,
+				waterTouch,
+				waterways.some((way) => way.kind === "river"),
+			)
+		: [];
+	const signalDate = (dates: string[]) => signalIndex(dates);
+	const textSheet =
+		state.eventsOpen ||
+		state.contextOpen ||
+		state.creditsOpen ||
+		modelsOpen;
+	const focusTool = (
+		tool: "events" | "context" | "credits" | "agriculture" | "layers" | "models",
+	) => {
+		if (tool !== "events") store.actions.setEventsOpen(false);
+		if (tool !== "context") store.actions.setContextOpen(false);
+		if (tool !== "credits") store.actions.setCreditsOpen(false);
+		if (tool !== "agriculture" && tool !== "models")
+			store.actions.setAgricultureOpen(false);
+		if (tool !== "layers") setLayersOpen(false);
+		if (tool !== "models") {
+			setModelsOpen(false);
+			setModelFocus(null);
+		}
+	};
+	const showModel = (id: CropId) => {
+		setModelFocus(id);
+		store.actions.setAgricultureOpen(true);
+		store.actions.setPlaying(false);
+		const hit = nearestModel(mapModels, id, state.probe);
+		if (hit) {
+			pendingFly.current = null;
+			flight.target = { col: hit.col, row: hit.row };
+		} else pendingFly.current = id;
+	};
+	const dockItems: DockItem[] = [
+		...(region.id === "mexicali"
+			? [
+					{
+						id: "crops",
+						label: "Cultivos",
+						icon: "crops" as const,
+						pressed: state.agricultureOpen,
+						onClick: () => {
+							const next = !state.agricultureOpen;
+							if (next) focusTool("agriculture");
+							store.actions.setAgricultureOpen(next);
+						},
+					},
+				]
+			: []),
+		{
+			id: "events",
+			label: "Eventos",
+			icon: "events",
+			pressed: state.eventsOpen,
+			onClick: () => {
+				const next = !state.eventsOpen;
+				if (next) focusTool("events");
+				store.actions.setEventsOpen(next);
+			},
+		},
+		{
+			id: "layers",
+			label: "Capas",
+			icon: "layers",
+			pressed: layersOpen,
+			onClick: () => {
+				const next = !layersOpen;
+				if (next) focusTool("layers");
+				setLayersOpen(next);
+			},
+		},
+		{
+			id: "models",
+			label: "Modelos",
+			icon: "models",
+			pressed: modelsOpen,
+			onClick: () => {
+				const next = !modelsOpen;
+				if (next) focusTool("models");
+				else setModelFocus(null);
+				setModelsOpen(next);
+			},
+		},
+		{
+			id: "context",
+			label: "Contexto",
+			icon: "context",
+			pressed: state.contextOpen,
+			onClick: () => {
+				const next = !state.contextOpen;
+				if (next) focusTool("context");
+				store.actions.setContextOpen(next);
+			},
+		},
+		{
+			id: "credits",
+			label: "Créditos",
+			icon: "credits",
+			pressed: state.creditsOpen,
+			onClick: () => {
+				const next = !state.creditsOpen;
+				if (next) focusTool("credits");
+				store.actions.setCreditsOpen(next);
+			},
+		},
+		{
+			id: "settings",
+			label: "Ajustes",
+			icon: "settings",
+			pressed: state.settingsOpen,
+			onClick: () => store.actions.setSettingsOpen(true),
+		},
+	];
 
 	return (
 		<FlightContext.Provider value={flight}>
-			<div className="relative h-dvh w-full overflow-hidden bg-[#05070f] text-slate-100">
+			<a
+				href="#mapa"
+				className="sr-only focus:not-sr-only focus:absolute focus:top-[max(0.5rem,env(safe-area-inset-top))] focus:left-3 focus:z-50 focus:rounded-lg focus:bg-cyan-300 focus:px-3 focus:py-2 focus:font-semibold focus:text-slate-950 focus:outline-2 focus:outline-offset-2 focus:outline-white"
+			>
+				Ir al mapa
+			</a>
+			<div
+				id="mapa"
+				className="relative h-dvh w-full overflow-hidden bg-[#05070f] text-slate-100"
+			>
 				<div className="absolute inset-0">
 					{sceneReady && terrain.data && (
 						<Canvas
@@ -628,10 +991,40 @@ function ExplorerScene() {
 								bands={rasterBands ?? zoneData?.bands ?? null}
 								bandPalette={raster ? bandPalette : BAND_COLORS}
 								contour={!raster}
-								onPick={(col, row) => store.actions.setInspected({ col, row })}
-								overlays={overlayModels.filter((o) => overlayOn(state, o.id))}
+								onPick={(col, row) => {
+									setSelectedPoiId(null);
+									store.actions.setInspected({ col, row });
+									if (!agriMap || !landData.data) return;
+									const zone = zoneAt(
+										agriMap,
+										landData.data,
+										region.width,
+										col,
+										row,
+									);
+									if (!zone) return;
+									setCompareRejected(false);
+									store.actions.setAgricultureOpen(true);
+									store.actions.setAgriZone(zone.id);
+								}}
+								overlays={overlayModels
+									.filter((o) => overlayOn(state, o.id))
+									.map((o) => ({
+										...o,
+										flags: paintWayFlags(
+											o.flags,
+											o.segments,
+											wayHit?.overlayId === o.id ? wayHit.feature : null,
+										),
+									}))}
 								arrows={raster?.id === "east-west" ? rasterField : null}
 								zones={zones}
+								agriCells={selectedAgri?.cells ?? null}
+								agriMask={agriMask}
+								mapModels={mapModels}
+								modelFocus={modelFocus}
+								cityMask={cityMask}
+								cityLive={selectedPoiId === "mexicali-centro"}
 								zoneLabels={zoneLabels}
 								deformScale={deformScale}
 								deformCube={deformCube}
@@ -647,6 +1040,7 @@ function ExplorerScene() {
 						<PoiLabels
 							pois={region.pois}
 							labels={labels}
+							selectedId={selectedPoiId}
 							onSelect={(poi) => goTo(region, poi)}
 						/>
 					)}
@@ -655,6 +1049,7 @@ function ExplorerScene() {
 							zones={zones}
 							labels={zoneLabels}
 							onSelect={(zone) => {
+								setSelectedPoiId(null);
 								flight.target = { col: zone.col, row: zone.row };
 							}}
 							context={(zone) =>
@@ -699,8 +1094,9 @@ function ExplorerScene() {
 				<WarpOverlay active={state.warping} reducedMotion={reducedMotion} />
 
 				{/* HUD */}
-				<div className="pointer-events-none absolute inset-0 flex flex-col gap-3 p-4">
+				<div className="hud-safe pointer-events-none absolute inset-0 flex flex-col gap-2 sm:gap-3">
 					<TopBar
+						compact={compact}
 						region={region}
 						exaggeration={exaggeration}
 						onOpenContext={() =>
@@ -711,6 +1107,26 @@ function ExplorerScene() {
 						}
 						onOpenSettings={() => store.actions.setSettingsOpen(true)}
 						onOpenEvents={() => store.actions.setEventsOpen(!state.eventsOpen)}
+						eventsOpen={state.eventsOpen}
+						onOpenModels={() => {
+							const next = !modelsOpen;
+							if (next) {
+								store.actions.setEventsOpen(false);
+								store.actions.setContextOpen(false);
+								store.actions.setCreditsOpen(false);
+								if (compact) focusTool("models");
+							} else setModelFocus(null);
+							setModelsOpen(next);
+						}}
+						modelsOpen={modelsOpen}
+						contextOpen={state.contextOpen}
+						creditsOpen={state.creditsOpen}
+						agricultureOpen={state.agricultureOpen}
+						onOpenAgriculture={
+							region.id === "mexicali"
+								? () => store.actions.setAgricultureOpen(!state.agricultureOpen)
+								: undefined
+						}
 						notice={<DataNotice source={currentSource} />}
 					/>
 					{compact && (
@@ -722,8 +1138,21 @@ function ExplorerScene() {
 						/>
 					)}
 
-					<div className="flex min-h-0 flex-1 items-start justify-between gap-3">
-						<div className="flex max-h-full min-h-0 flex-col gap-3 overflow-y-auto">
+					<div
+						className={`flex min-h-0 flex-1 gap-2 sm:gap-3 ${
+							compact
+								? "flex-col justify-end"
+								: "items-start justify-between"
+						}`}
+					>
+						{(!compact || agriOpen) && (
+						<div
+							className={`scroll-thin flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain sm:gap-3 ${
+								compact
+									? "max-h-[min(38dvh,20rem)] w-full"
+									: "max-h-full"
+							}`}
+						>
 							{!compact && (
 								<PoiList
 									manifest={manifest.data}
@@ -732,14 +1161,118 @@ function ExplorerScene() {
 									compact={false}
 								/>
 							)}
+							{agriOpen && (
+								<AgriculturePanel
+									missingCover={!landLayer || landData.isError}
+									loading={!landData.data && landData.isPending}
+									listed={agriList.listed}
+									omitted={agriList.omitted}
+									selected={selectedAgri}
+									rejected={compareRejected}
+									moisture={selectedSeries[moistureIndex] ?? null}
+									dates={moistureLayer?.dates ?? []}
+									activeIndex={moistureIndex}
+									selectedSeries={selectedSeries}
+									columns={compareColumns.map((column, index) => ({
+										...column,
+										values: compared.columns[index] ?? column.values,
+									}))}
+									vegetation={
+										selectedAgri && hvLayer
+											? vegetationWord(
+													selectedAgri.cells,
+													asInt16(hvQ.data),
+													signalDate(hvLayer.dates),
+													agriPlane,
+													hvLayer.scale,
+													hvLayer.nodata,
+												)
+											: null
+									}
+									change={
+										selectedAgri && changeLayer
+											? changeWord(
+													selectedAgri.cells,
+													asBytes(changeQ.data),
+													signalDate(changeLayer.dates),
+													agriPlane,
+													changeLayer.nodata,
+												)
+											: null
+									}
+									disturbance={
+										selectedAgri && disturbanceLayer
+											? disturbanceWord(
+													selectedAgri.cells,
+													asBytes(disturbanceQ.data),
+													signalDate(disturbanceLayer.dates),
+													agriPlane,
+													disturbanceLayer.nodata,
+												)
+											: null
+									}
+									water={agriWater}
+									onSelect={(id) => {
+										setCompareRejected(false);
+										setSelectedPoiId(null);
+										store.actions.setAgriZone(id);
+									}}
+									onCompare={(id) => {
+										if (state.agriZoneId === null) {
+											setCompareRejected(false);
+											store.actions.setAgriZone(id);
+											return;
+										}
+										const next = withComparison(
+											state.agriZoneId,
+											state.agriCompare,
+											id,
+										);
+										setCompareRejected(next.rejected);
+										if (!next.rejected)
+											store.actions.setAgriCompare(next.extras);
+									}}
+									onRemove={(id) => {
+										setCompareRejected(false);
+										store.actions.setAgriCompare(
+											state.agriCompare.filter((item) => item !== id),
+										);
+									}}
+									onClose={() => store.actions.setAgricultureOpen(false)}
+								/>
+							)}
 						</div>
-						<div className="flex max-h-full min-h-0 flex-col items-end gap-3 overflow-y-auto">
+						)}
+						{(textSheet || !compact || layersOpen || inspected) && (
+						<div
+							className={`scroll-thin flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain sm:gap-3 ${
+								compact
+									? "max-h-[min(38dvh,20rem)] w-full"
+									: "max-h-full items-end"
+							}`}
+						>
 							{state.eventsOpen && (
 								<SidePanel
 									title="Eventos detectados"
 									onClose={() => store.actions.setEventsOpen(false)}
 								>
 									<EventsList events={events.data ?? []} onSelect={goToEvent} />
+								</SidePanel>
+							)}
+							{modelsOpen && (
+								<SidePanel
+									title="Modelos del mapa"
+									onClose={() => {
+										setModelsOpen(false);
+										setModelFocus(null);
+									}}
+								>
+									<ModelsPanel
+										selected={modelFocus}
+										counts={modelCounts}
+										reducedMotion={reducedMotion}
+										onSelect={showModel}
+									/>
 								</SidePanel>
 							)}
 							{state.contextOpen && (
@@ -761,10 +1294,7 @@ function ExplorerScene() {
 									/>
 								</SidePanel>
 							)}
-							{(!compact || layersOpen) &&
-								!state.eventsOpen &&
-								!state.contextOpen &&
-								!state.creditsOpen && (
+							{!textSheet && (inspected || !compact || layersOpen) && (
 									<>
 										{inspected && (
 											<Inspector
@@ -781,6 +1311,7 @@ function ExplorerScene() {
 												onClose={() => store.actions.setInspected(null)}
 											/>
 										)}
+										{(!compact || layersOpen) && (
 										<LayerPanel
 											catalog={catalog}
 											active={item}
@@ -792,9 +1323,11 @@ function ExplorerScene() {
 											fieldLimit={fieldLimit}
 											zoneCount={zoneData?.zones.length ?? 0}
 										/>
+										)}
 									</>
 								)}
 						</div>
+						)}
 					</div>
 
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -824,6 +1357,10 @@ function ExplorerScene() {
 						<div className="flex min-w-0 flex-1 flex-col items-center gap-2">
 							{dateCount > 0 && currentDate ? (
 								<div className="w-full max-w-2xl">
+									{!(
+										compact &&
+										(textSheet || state.agricultureOpen || layersOpen)
+									) && (
 									<DateTitle
 										date={fmtShortDate(currentDate)}
 										subtitle={[
@@ -834,6 +1371,7 @@ function ExplorerScene() {
 											.join(" · ")}
 										announce={!state.playing}
 									/>
+									)}
 									<Timeline
 										dates={timelineDates}
 										index={Math.min(state.dateIndex, dateCount - 1)}
@@ -860,19 +1398,13 @@ function ExplorerScene() {
 									/>
 								)
 							)}
-							{compact && (
-								<button
-									type="button"
-									onClick={() => setLayersOpen((v) => !v)}
-									aria-expanded={layersOpen}
-									className="pointer-events-auto rounded-full border border-white/10 bg-slate-950/80 px-3 py-1.5 text-xs font-semibold text-slate-100 backdrop-blur"
-								>
-									{layersOpen ? "Ocultar capas y leyenda" : "Capas y leyenda"}
-								</button>
-							)}
-							<ControlsHint compact={compact} />
+							{!(
+								compact &&
+								(textSheet || state.agricultureOpen || layersOpen)
+							) && <ControlsHint compact={compact} />}
 						</div>
 					</div>
+					{compact && <MobileDock items={dockItems} />}
 				</div>
 			</div>
 		</FlightContext.Provider>

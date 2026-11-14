@@ -28,6 +28,20 @@ describe("parseManifest", () => {
 		expect(warn.mock.calls[0][0]).toContain("backscatter-change");
 	});
 
+	it("acepta un overlay de río sin cambiar el esquema", () => {
+		const withRiver = structuredClone(fixture);
+		withRiver.regions[0].overlays.push({
+			id: "rivers",
+			name: "Ríos",
+			kind: "river",
+			path: "mexicali/rivers.json",
+			credits: [],
+		});
+		const m = parseManifest(withRiver, () => {});
+		expect(m.schemaVersion).toBe(2);
+		expect(m.regions[0].overlays.at(-1)?.kind).toBe("river");
+	});
+
 	it("rechaza un source desconocido", () => {
 		const bad = structuredClone(fixture);
 		bad.regions[0].layers[0].source = "landsat";

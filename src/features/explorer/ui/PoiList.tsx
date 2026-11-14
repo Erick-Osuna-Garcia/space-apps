@@ -21,17 +21,20 @@ export function PoiList({
 	const items = manifest.regions.flatMap((region) =>
 		region.pois.map((poi) => ({ region, poi })),
 	);
+	const hasOtherRegion = manifest.regions.some(
+		(region) => region.id !== activeRegionId,
+	);
 
 	if (compact) {
 		return (
-			<div className="pointer-events-auto -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+			<div className="pointer-events-auto flex snap-x gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 				{items.map(({ region, poi }) => (
 					<button
 						key={`${region.id}/${poi.id}`}
 						type="button"
 						onClick={() => onSelect(region, poi)}
 						className={cn(
-							"flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold backdrop-blur-md",
+							"flex min-h-11 shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 text-xs font-semibold backdrop-blur-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300",
 							region.id === activeRegionId
 								? "border-amber-300/40 bg-slate-950/80 text-amber-100"
 								: "border-cyan-300/30 bg-slate-950/80 text-cyan-100",
@@ -55,8 +58,9 @@ export function PoiList({
 				<PanelTitle>Destinos</PanelTitle>
 				<InfoHint label="Destinos">
 					<p>
-						Lugares para visitar. El pin amarillo vuela a un punto de esta
-						región; el cohete hace un salto (warp) a otra región.
+						{hasOtherRegion
+							? "Lugares para visitar. El pin amarillo vuela a un punto de esta región; el cohete hace un salto (warp) a otra región."
+							: "Lugares para visitar. Volar aquí lleva la nave a ese punto. Ciudad de Mexicali además marca en ámbar la zona urbana."}
 					</p>
 				</InfoHint>
 			</div>

@@ -1,6 +1,8 @@
+import { Edges } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { cloneElement, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { Line2, LineGeometry, LineMaterial } from "three-stdlib";
 import type { KeyAxes } from "../controls/useKeyboard";
 import { screenToWorld } from "../lib/grid";
 import { stepFlight, useFlight } from "./flight";
@@ -10,56 +12,97 @@ const HULL = "#e8edf2";
 const ACCENT = "#f59e0b";
 const GLOW = "#67e8f9";
 
+const OUTLINE = "#05070f";
+
+/** Pieza de la nave con contorno negro: cara trasera agrandada y aristas. */
+function Outlined({
+	position,
+	rotation,
+	geometry,
+	material,
+}: {
+	position?: [number, number, number];
+	rotation?: [number, number, number];
+	geometry: React.ReactElement;
+	material: React.ReactElement;
+}) {
+	return (
+		<group position={position} rotation={rotation}>
+			<mesh castShadow>
+				{geometry}
+				{material}
+				<Edges color={OUTLINE} lineWidth={2.5} threshold={12} />
+			</mesh>
+			<mesh scale={1.28}>
+				{cloneElement(geometry)}
+				<meshBasicMaterial color={OUTLINE} side={THREE.BackSide} />
+			</mesh>
+		</group>
+	);
+}
+
 /** Nave low-poly hecha con primitivas (sin assets externos). */
 function ShipModel() {
 	return (
-		<group scale={1.6 / MAP_SCALE}>
-			{/* casco: proa hacia -z local */}
-			<mesh rotation={[-Math.PI / 2, 0, 0]} castShadow>
-				<coneGeometry args={[0.9, 3.6, 6]} />
-				<meshStandardMaterial
-					color={HULL}
-					flatShading
-					metalness={0.3}
-					roughness={0.45}
-				/>
-			</mesh>
-			{/* cabina */}
-			<mesh position={[0, 0.45, -0.3]}>
-				<sphereGeometry args={[0.5, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-				<meshStandardMaterial
-					color="#38bdf8"
-					emissive="#0c4a6e"
-					roughness={0.15}
-					metalness={0.6}
-				/>
-			</mesh>
-			{/* alas */}
-			<mesh position={[0, -0.1, 0.7]} castShadow>
-				<boxGeometry args={[4.2, 0.12, 1.1]} />
-				<meshStandardMaterial
-					color={HULL}
-					flatShading
-					metalness={0.3}
-					roughness={0.5}
-				/>
-			</mesh>
+		<group scale={2.2 / MAP_SCALE}>
+			<Outlined
+				rotation={[-Math.PI / 2, 0, 0]}
+				geometry={<coneGeometry args={[0.9, 3.6, 6]} />}
+				material={
+					<meshStandardMaterial
+						color={HULL}
+						flatShading
+						metalness={0.3}
+						roughness={0.45}
+					/>
+				}
+			/>
+			<Outlined
+				position={[0, 0.45, -0.3]}
+				geometry={
+					<sphereGeometry args={[0.5, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+				}
+				material={
+					<meshStandardMaterial
+						color="#38bdf8"
+						emissive="#0c4a6e"
+						roughness={0.15}
+						metalness={0.6}
+					/>
+				}
+			/>
+			<Outlined
+				position={[0, -0.1, 0.7]}
+				geometry={<boxGeometry args={[4.2, 0.12, 1.1]} />}
+				material={
+					<meshStandardMaterial
+						color={HULL}
+						flatShading
+						metalness={0.3}
+						roughness={0.5}
+					/>
+				}
+			/>
 			{[-2.05, 2.05].map((x) => (
-				<mesh key={x} position={[x, 0.15, 0.85]}>
-					<boxGeometry args={[0.14, 0.55, 0.9]} />
-					<meshStandardMaterial color={ACCENT} flatShading />
-				</mesh>
-			))}
-			{/* motor */}
-			<mesh position={[0, 0, 1.85]}>
-				<cylinderGeometry args={[0.35, 0.45, 0.4, 8]} />
-				<meshStandardMaterial
-					color={GLOW}
-					emissive={GLOW}
-					emissiveIntensity={2.5}
-					toneMapped={false}
+				<Outlined
+					key={x}
+					position={[x, 0.15, 0.85]}
+					geometry={<boxGeometry args={[0.14, 0.55, 0.9]} />}
+					material={<meshStandardMaterial color={ACCENT} flatShading />}
 				/>
-			</mesh>
+			))}
+			<Outlined
+				position={[0, 0, 1.85]}
+				geometry={<cylinderGeometry args={[0.35, 0.45, 0.4, 8]} />}
+				material={
+					<meshStandardMaterial
+						color={GLOW}
+						emissive={GLOW}
+						emissiveIntensity={2.5}
+						toneMapped={false}
+					/>
+				}
+			/>
 		</group>
 	);
 }
@@ -111,6 +154,7 @@ export function Ship({ keys, reducedMotion }: ShipProps) {
 	return (
 		<>
 			{!reducedMotion && <ShipTrail />}
+			<GroundLine />
 			<group ref={group}>
 				<group ref={body}>
 					<ShipModel />
@@ -123,6 +167,72 @@ export function Ship({ keys, reducedMotion }: ShipProps) {
 					position={[0, -2 / MAP_SCALE, 2.5 / MAP_SCALE]}
 				/>
 			</group>
+		</>
+	);
+}
+
+/** Hueco bajo la nave y altura del círculo para que no cruce el relieve. */
+const LINE_GAP = 16 / MAP_SCALE;
+const GROUND_LIFT = 1.8;
+
+/** Trazo amarillo desde la nave hasta el punto del relieve que tiene debajo. */
+function GroundLine() {
+	const flight = useFlight();
+	const ring = useRef<THREE.Mesh>(null);
+	const line = useMemo(() => {
+		const geometry = new LineGeometry();
+		geometry.setPositions([0, 0, 0, 0, -1, 0]);
+		const material = new LineMaterial({
+			color: 0xfacc15,
+			linewidth: 4,
+			depthTest: true,
+		});
+		const mesh = new Line2(geometry, material);
+		mesh.frustumCulled = false;
+		mesh.renderOrder = 10;
+		return mesh;
+	}, []);
+	useEffect(
+		() => () => {
+			line.geometry.dispose();
+			(line.material as LineMaterial).dispose();
+		},
+		[line],
+	);
+	useFrame((state) => {
+		const ground = flight.heightAt(flight.col, flight.row) + GROUND_LIFT;
+		const top = Math.max(ground + 0.4, flight.y - LINE_GAP);
+		(line.geometry as LineGeometry).setPositions([
+			flight.col,
+			top,
+			flight.row,
+			flight.col,
+			ground,
+			flight.row,
+		]);
+		(line.material as LineMaterial).resolution.set(
+			state.size.width,
+			state.size.height,
+		);
+		ring.current?.position.set(flight.col, ground, flight.row);
+	});
+	return (
+		<>
+			<primitive object={line} />
+			<mesh
+				ref={ring}
+				rotation={[-Math.PI / 2, 0, 0]}
+				renderOrder={11}
+			>
+				<ringGeometry args={[0.55, 0.9, 28]} />
+				<meshBasicMaterial
+					color="#facc15"
+					side={THREE.DoubleSide}
+					polygonOffset
+					polygonOffsetFactor={-4}
+					polygonOffsetUnits={-4}
+				/>
+			</mesh>
 		</>
 	);
 }

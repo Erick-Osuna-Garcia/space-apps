@@ -49,7 +49,7 @@ export function Timeline({
 				type="button"
 				onClick={() => onPlaying(!playing)}
 				aria-label={playing ? "Pausar" : "Reproducir"}
-				className="flex size-10 shrink-0 items-center justify-center rounded-full bg-cyan-400 text-slate-950 transition hover:bg-cyan-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
+				className="flex size-11 shrink-0 items-center justify-center rounded-full bg-cyan-400 text-slate-950 transition-[background-color] hover:bg-cyan-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
 			>
 				{playing ? (
 					<Pause className="size-4" aria-hidden />

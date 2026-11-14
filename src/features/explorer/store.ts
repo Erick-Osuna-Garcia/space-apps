@@ -38,6 +38,11 @@ export interface ExplorerState {
 	waterMotion: boolean;
 	contextOpen: boolean;
 	creditsOpen: boolean;
+	/** Panel de zonas agrícolas. No cambia la capa del mapa. */
+	agricultureOpen: boolean;
+	agriZoneId: number | null;
+	/** Otras zonas en la comparación; la elegida ocupa el primer lugar. */
+	agriCompare: number[];
 }
 
 export type MapView =
@@ -69,6 +74,9 @@ export const initialExplorerState = (regionId = "mexicali"): ExplorerState => ({
 	waterMotion: true,
 	contextOpen: false,
 	creditsOpen: false,
+	agricultureOpen: false,
+	agriZoneId: null,
+	agriCompare: [],
 });
 
 export const layerKey = (regionId: string, layerId: string) =>
@@ -86,6 +94,9 @@ export function createExplorerStore(initial = initialExplorerState()) {
 				playing: true,
 				probe: null,
 				inspected: null,
+				agricultureOpen: false,
+				agriZoneId: null,
+				agriCompare: [],
 			}));
 		},
 		setLayerVisible(layerId: string, visible: boolean) {
@@ -137,7 +148,12 @@ export function createExplorerStore(initial = initialExplorerState()) {
 			setState((s) => ({ ...s, inspected }));
 		},
 		setEventsOpen(eventsOpen: boolean) {
-			setState((s) => ({ ...s, eventsOpen }));
+			setState((s) => ({
+				...s,
+				eventsOpen,
+				contextOpen: eventsOpen ? false : s.contextOpen,
+				creditsOpen: eventsOpen ? false : s.creditsOpen,
+			}));
 		},
 		setSettingsOpen(settingsOpen: boolean) {
 			setState((s) => ({ ...s, settingsOpen }));
@@ -158,10 +174,33 @@ export function createExplorerStore(initial = initialExplorerState()) {
 			setState((s) => ({ ...s, warping }));
 		},
 		setContextOpen(contextOpen: boolean) {
-			setState((s) => ({ ...s, contextOpen }));
+			setState((s) => ({
+				...s,
+				contextOpen,
+				eventsOpen: contextOpen ? false : s.eventsOpen,
+				creditsOpen: contextOpen ? false : s.creditsOpen,
+			}));
 		},
 		setCreditsOpen(creditsOpen: boolean) {
-			setState((s) => ({ ...s, creditsOpen }));
+			setState((s) => ({
+				...s,
+				creditsOpen,
+				eventsOpen: creditsOpen ? false : s.eventsOpen,
+				contextOpen: creditsOpen ? false : s.contextOpen,
+			}));
+		},
+		setAgricultureOpen(agricultureOpen: boolean) {
+			setState((s) => ({ ...s, agricultureOpen }));
+		},
+		setAgriZone(agriZoneId: number | null) {
+			setState((s) => ({
+				...s,
+				agriZoneId,
+				agriCompare: s.agriCompare.filter((id) => id !== agriZoneId),
+			}));
+		},
+		setAgriCompare(agriCompare: number[]) {
+			setState((s) => ({ ...s, agriCompare }));
 		},
 	}));
 }

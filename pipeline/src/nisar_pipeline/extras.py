@@ -163,6 +163,7 @@ def overpass_query(bbox) -> str:
         "[out:json][timeout:120];("
         f'way["highway"~"^(motorway|trunk|primary|secondary)$"]{box_};'
         f'way["waterway"="canal"]{box_};'
+        f'way["waterway"="river"]{box_};'
         ");out geom tags;"
     )
 
@@ -184,13 +185,19 @@ def fetch_osm(region: RegionConfig, cache_dir: Path) -> dict:
 
 def osm_to_grid(data: dict, grid: Grid, tolerance: float = 0.4) -> dict[str, list[dict]]:
     """Vías en coordenadas de grilla, simplificadas y recortadas a la grilla, por tipo."""
-    out: dict[str, list[dict]] = {"road": [], "canal": []}
+    out: dict[str, list[dict]] = {"road": [], "canal": [], "river": []}
     for el in data.get("elements", []):
         geom = el.get("geometry")
         tags = el.get("tags", {})
         if not geom or len(geom) < 2:
             continue
-        kind = "canal" if tags.get("waterway") == "canal" else "road"
+        waterway = tags.get("waterway")
+        if waterway == "river":
+            kind, cls = "river", "river"
+        elif waterway == "canal":
+            kind, cls = "canal", "canal"
+        else:
+            kind, cls = "road", tags.get("highway") or "secondary"
         pts = [grid.lonlat_to_colrow(p["lon"], p["lat"]) for p in geom]
         pts = [(c, r) for c, r in pts if 0 <= c <= grid.width and 0 <= r <= grid.height]
         if len(pts) < 2:
@@ -198,7 +205,7 @@ def osm_to_grid(data: dict, grid: Grid, tolerance: float = 0.4) -> dict[str, lis
         line = LineString(pts).simplify(tolerance)
         out[kind].append({
             "name": tags.get("name") or tags.get("ref") or "",
-            "class": tags.get("highway") or "canal",
+            "class": cls,
             "points": [[round(c, 2), round(r, 2)] for c, r in line.coords],
         })
     return out
@@ -396,7 +403,11 @@ def build_extras(
 
     if "infrastructure" in wanted:
         features = osm_to_grid(fetch(region, cfg.cache_dir), grid)
-        for kind, oid, name in (("road", "roads", "Caminos"), ("canal", "canals", "Canales")):
+        for kind, oid, name in (
+            ("road", "roads", "Caminos"),
+            ("canal", "canals", "Canales"),
+            ("river", "rivers", "Ríos"),
+        ):
             rel = f"{region.id}/{oid}.json"
             target = out_dir / rel
             target.parent.mkdir(parents=True, exist_ok=True)

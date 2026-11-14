@@ -22,6 +22,20 @@ def test_rejects_unknown_source():
         Manifest.model_validate(data)
 
 
+def test_accepts_river_overlay_on_schema_v2():
+    data = json.loads(FIXTURE.read_text())
+    data["regions"][0]["overlays"].append({
+        "id": "rivers",
+        "name": "Ríos",
+        "kind": "river",
+        "path": "mexicali/rivers.json",
+        "credits": [],
+    })
+    manifest = Manifest.model_validate(data)
+    assert manifest.schemaVersion == 2
+    assert manifest.regions[0].overlays[-1].kind == "river"
+
+
 def test_rejects_extra_fields():
     data = json.loads(FIXTURE.read_text())
     data["regions"][0]["oops"] = 1

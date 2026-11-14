@@ -68,6 +68,12 @@ interface TerrainProps {
 	water: WaterData | null;
 	/** Oleaje y ondas encendidos. */
 	waterMotion: boolean;
+	/** Máscara de cultivo: 1 zona, 2 elegida. null = no pintar. */
+	agriMask: Uint8Array | null;
+	/** 255 dentro de la ciudad. null = no pintar. */
+	cityMask: Uint8Array | null;
+	/** El sombreado de la ciudad parpadea solo mientras está elegida. */
+	cityLive: boolean;
 }
 
 export function Terrain({
@@ -94,6 +100,9 @@ export function Terrain({
 	uniforms,
 	water,
 	waterMotion,
+	agriMask,
+	cityMask,
+	cityLive,
 }: TerrainProps) {
 	const flight = useFlight();
 	const geo = useMemo(
@@ -125,6 +134,8 @@ export function Terrain({
 			uniforms.uBands.value.dispose();
 			uniforms.uDeformCube.value.dispose();
 			uniforms.uWater.value.dispose();
+			uniforms.uAgri.value.dispose();
+			uniforms.uCity.value.dispose();
 		},
 		[material, skirtMaterial, uniforms],
 	);
@@ -202,6 +213,30 @@ export function Terrain({
 		uniforms.uContour.value = contour ? 1 : 0;
 	}, [bandPalette, contour, uniforms]);
 
+	useEffect(() => {
+		if (!agriMask) {
+			uniforms.uAgriOn.value = 0;
+			return;
+		}
+		const next = bandsTexture(agriMask, region.width, region.height);
+		next.generateMipmaps = false;
+		uniforms.uAgri.value.dispose();
+		uniforms.uAgri.value = next;
+		uniforms.uAgriOn.value = 1;
+	}, [agriMask, region, uniforms]);
+
+	useEffect(() => {
+		if (!cityMask) {
+			uniforms.uCityOn.value = 0;
+			return;
+		}
+		const next = bandsTexture(cityMask, region.width, region.height);
+		next.generateMipmaps = false;
+		uniforms.uCity.value.dispose();
+		uniforms.uCity.value = next;
+		uniforms.uCityOn.value = 1;
+	}, [cityMask, region, uniforms]);
+
 	// Bandas de la vista Zonas.
 	useEffect(() => {
 		if (!bands) return;
@@ -234,10 +269,14 @@ export function Terrain({
 		const on = Boolean(
 			visible && (paintMode === PaintMode.CUBE ? hasCube : ready || hasCube),
 		);
-		uniforms.uLayerOn.value = on ? 1 : 0;
+		uniforms.uLayerOn.value = on ? 1 : 0
 		uniforms.uOpacity.value = opacity;
 		uniforms.uMode.value = ready ? paintMode : PaintMode.CUBE;
 		uniforms.uDeform.value = visible && hasCube && deformCube ? deformScale : 0;
+		uniforms.uCityPulse.value =
+			!cityLive || reducedMotion
+				? 0.35
+				: 0.5 + 0.5 * Math.sin(performance.now() * 0.004);
 		if (uniforms.uMix.value < 1) {
 			uniforms.uMix.value = Math.min(
 				1,
