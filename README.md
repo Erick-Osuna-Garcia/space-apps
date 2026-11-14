@@ -18,6 +18,7 @@ Otros comandos: `bun run build`, `bun run test` y `bun run check`.
 - **Pilotar:** `W A S D` o flechas, `Shift` para turbo. Clic o tap en el terreno para volar ahí. Rueda o pellizco para zoom.
 - **Destinos:** vuela a un punto de interés.
 - **Línea de tiempo:** elige una fecha o presiona play.
+- **Cultivos** (solo Valle de Mexicali): abre zonas de la clase Cultivos (ESA WorldCover 2021). Cada zona muestra la humedad NISAR de octubre 2025 a octubre 2026, si la vegetación o la superficie cambiaron, y el canal, río o cuerpo de agua más cercano. Se pueden comparar hasta tres zonas. La cobertura es de 2021 y no dice qué cultivo hay; la humedad es de los primeros centímetros, a unos 200 m. Un cambio de radar no indica su causa, y la cercanía al agua no demuestra riego. No estima cosecha.
 
 ## Capas del mapa
 
@@ -30,7 +31,7 @@ Se elige una capa a la vez en el panel de capas, y cada una tiene su ayuda «?»
 | Agua | Agua en superficie, Humedad del suelo |
 | Impacto | Pendiente, Laderas activas, Uso de suelo, Población |
 
-Sobre cualquier capa se pueden encender caminos y canales, con ancho según el tipo de vía y los tramos en zonas de cambio resaltados. Las vías menores aparecen al acercarse.
+Sobre cualquier capa se pueden encender caminos, canales y, si el dato existe, ríos. El ancho sigue el tipo de vía y los tramos en zonas de cambio se resaltan. La vía de agua que usa la zona agrícola elegida se marca en amarillo. Las vías menores aparecen al acercarse. La nave y las capas de movimiento siguen disponibles.
 
 El agua se anima y reacciona a la nave y al toque. Su extensión viene de las mediciones de cada fecha; el oleaje y las ondas son decorativos y se apagan en Ajustes.
 

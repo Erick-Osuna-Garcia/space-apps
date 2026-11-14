@@ -59,7 +59,22 @@ def test_osm_to_grid_splits_clips_and_simplifies():
 
 
 def test_overpass_query_uses_south_west_north_east():
-    assert "(32.2,-115.65,32.75,-115.0)" in overpass_query((-115.65, 32.20, -115.00, 32.75))
+    query = overpass_query((-115.65, 32.20, -115.00, 32.75))
+    assert "(32.2,-115.65,32.75,-115.0)" in query
+    assert 'way["waterway"="river"]' in query
+
+
+def test_osm_keeps_rivers_out_of_canals():
+    data = {"elements": [
+        {"tags": {"waterway": "canal", "name": "Canal"},
+         "geometry": [{"lon": -115.5, "lat": 32.4}, {"lon": -115.4, "lat": 32.4}]},
+        {"tags": {"waterway": "river", "name": "Hardy"},
+         "geometry": [{"lon": -115.5, "lat": 32.3}, {"lon": -115.4, "lat": 32.3}]},
+    ]}
+    out = osm_to_grid(data, GRID)
+    assert len(out["canal"]) == 1 and out["canal"][0]["class"] == "canal"
+    assert len(out["river"]) == 1 and out["river"][0]["class"] == "river"
+    assert out["river"][0]["name"] == "Hardy"
 
 
 def test_build_extras_with_fakes(tmp_path):
@@ -78,7 +93,7 @@ def test_build_extras_with_fakes(tmp_path):
     assert [e.layer.id for e in layers] == ["slope", "active-slopes", "landcover", "population"]
     assert all(e.data.shape == (1, *shape) for e in layers)
     assert layers[3].data.max() == 7
-    assert [o.id for o in overlays] == ["roads", "canals"]
+    assert [o.id for o in overlays] == ["roads", "canals", "rivers"]
     assert json.loads((tmp_path / "mexicali/roads.json").read_text()) == []
 
 

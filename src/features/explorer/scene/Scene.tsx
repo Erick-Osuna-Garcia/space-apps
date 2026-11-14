@@ -6,12 +6,15 @@ import type { Palette } from "../lib/colormap";
 import { gridToLonLat } from "../lib/grid";
 import type { Zone } from "../lib/impact";
 import type { Feature } from "../lib/infrastructure";
+import type { MapModel } from "../lib/mapModels";
 import type { Layer, Region } from "../manifest";
 import type { ExplorerStore } from "../store";
+import { AgriculturalOutline } from "./AgriculturalOutline";
 import { useFlight } from "./flight";
 import { Infrastructure } from "./Infrastructure";
 import { IsoCamera } from "./IsoCamera";
 import { createLayerUniforms, type PaintModeValue } from "./layerMaterial";
+import { MapModels } from "./MapModels";
 import { MotionArrows } from "./MotionArrows";
 import { PoiMarkers } from "./PoiMarkers";
 import { Ship } from "./Ship";
@@ -85,13 +88,18 @@ export interface SceneProps {
 	onPick: (col: number, row: number) => void;
 	overlays: Array<{
 		id: string;
-		kind: "road" | "canal";
+		kind: "road" | "canal" | "river";
 		features: Feature[];
 		flags: Uint8Array;
 	}>;
 	/** Campo este-oeste cuando esa capa está activa, para dibujar flechas. */
 	arrows: Float32Array | null;
 	zones: Zone[];
+	/** Celdas de la zona agrícola elegida; el contorno es solo de esa zona. */
+	agriCells: number[] | null;
+	/** Máscara de cultivo sobre el terreno. null la apaga. */
+	agriMask: Uint8Array | null;
+	mapModels: MapModel[];
 	zoneLabels: React.RefObject<Map<string, HTMLElement>>;
 	deformScale: number;
 	deformCube: Float32Array | null;
@@ -151,6 +159,7 @@ export function Scene(props: SceneProps) {
 				uniforms={uniforms}
 				water={props.water}
 				waterMotion={props.waterMotion}
+				agriMask={props.agriMask}
 			/>
 			<PoiMarkers
 				pois={region.pois}
@@ -176,11 +185,20 @@ export function Scene(props: SceneProps) {
 					heightAt={props.heightAt}
 				/>
 			)}
+			{props.agriCells && (
+				<AgriculturalOutline
+					cells={props.agriCells}
+					width={region.width}
+					height={region.height}
+					heightAt={props.heightAt}
+				/>
+			)}
 			<ZoneMarkers
 				zones={props.zones}
 				heightAt={props.heightAt}
 				labels={props.zoneLabels}
 			/>
+			<MapModels models={props.mapModels} heightAt={props.heightAt} />
 			<Ship keys={props.keys} reducedMotion={props.reducedMotion} />
 			<ProbePublisher region={region} store={props.store} />
 		</>

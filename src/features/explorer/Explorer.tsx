@@ -19,6 +19,23 @@ import {
 	usePrefersReducedMotion,
 } from "./hooks/useMedia";
 import {
+	alignSeries,
+	barrierMask,
+	buildZones,
+	changeWord,
+	cropMask,
+	disturbanceWord,
+	listedZones,
+	moistureSeries,
+	nearestWaterway,
+	paintWayFlags,
+	vegetationWord,
+	waterBeside,
+	waterLines,
+	withComparison,
+	zoneAt,
+} from "./lib/agriculture";
+import {
 	buildCatalog,
 	type CatalogItem,
 	categoricalPlane,
@@ -55,6 +72,7 @@ import {
 	nearestSegment,
 	toSegments,
 } from "./lib/infrastructure";
+import { placeMapModels } from "./lib/mapModels";
 import { fillForDisplay, robustLimit, velocityField } from "./lib/stats";
 import { waterDateIndex, waterMask } from "./lib/water";
 import type { Overlay, Poi, Region } from "./manifest";
@@ -63,6 +81,7 @@ import { PaintMode } from "./scene/layerMaterial";
 import { Scene } from "./scene/Scene";
 import { baseHeightFn, DEFAULT_EXAGGERATION } from "./scene/terrainGeometry";
 import { explorerStore, layerUi, type MapView, overlayOn } from "./store";
+import { AgriculturePanel } from "./ui/AgriculturePanel";
 import { DateTitle } from "./ui/DateTitle";
 import { EventsList } from "./ui/EventsList";
 import { Inspector, type InspectorRow } from "./ui/Inspector";
@@ -141,6 +160,7 @@ function ExplorerScene() {
 	const zoneLabels = useRef(new Map<string, HTMLElement>());
 	const flight = useMemo(createFlight, []);
 	const [layersOpen, setLayersOpen] = useState(false);
+	const [compareRejected, setCompareRejected] = useState(false);
 
 	const manifest = useQuery(manifestQuery);
 	const region =
@@ -482,7 +502,8 @@ function ExplorerScene() {
 	});
 	const landData = useQuery({
 		...rasterQuery(region, landLayer),
-		enabled: Boolean(landLayer) && view === "zones",
+		enabled:
+			Boolean(landLayer) && (view === "zones" || region?.id === "mexicali"),
 	});
 	const landNames = useMemo(
 		() =>
@@ -491,6 +512,108 @@ function ExplorerScene() {
 			),
 		[landLayer],
 	);
+
+	const agriOpen = region?.id === "mexicali" && state.agricultureOpen;
+	const findLayer = (id: string) =>
+		region?.layers.find((l) => l.id === id) ?? null;
+	const moistureLayer = findLayer("moisture");
+	const hvLayer = findLayer("hv");
+	const changeLayer = findLayer("change");
+	const disturbanceLayer = findLayer("disturbance");
+	const moistureQ = useQuery({
+		...rasterQuery(region, moistureLayer),
+		enabled: Boolean(agriOpen && moistureLayer),
+	});
+	const hvQ = useQuery({
+		...rasterQuery(region, hvLayer),
+		enabled: Boolean(agriOpen && hvLayer),
+	});
+	const changeQ = useQuery({
+		...rasterQuery(region, changeLayer),
+		enabled: Boolean(agriOpen && changeLayer),
+	});
+	const disturbanceQ = useQuery({
+		...rasterQuery(region, disturbanceLayer),
+		enabled: Boolean(agriOpen && disturbanceLayer),
+	});
+	// biome-ignore lint/correctness/useExhaustiveDependencies: overlaySignature resume overlayData
+	const waterways = useMemo(
+		() =>
+			overlayList.flatMap((overlay, index) => {
+				if (overlay.kind !== "canal" && overlay.kind !== "river") return [];
+				const features = overlayData[index]?.data ?? [];
+				return [
+					{
+						id: overlay.id,
+						kind: overlay.kind,
+						features,
+						segments: toSegments(features, region?.cellSizeM ?? 1),
+					},
+				];
+			}),
+		// overlaySignature resume overlayData, que cambia de identidad en cada render
+		[overlaySignature, overlayList, region?.cellSizeM],
+	);
+	const agriMap = useMemo(() => {
+		if (region?.id !== "mexicali" || !landData.data) return null;
+		const barriers = barrierMask(
+			region.width,
+			region.height,
+			waterways.flatMap((way) => way.features),
+		);
+		return buildZones(
+			landData.data,
+			region.width,
+			region.height,
+			region.cellSizeM,
+			barriers,
+		);
+	}, [region, landData.data, waterways]);
+	const selectedAgri =
+		agriMap?.zones.find((zone) => zone.id === state.agriZoneId) ?? null;
+	const agriMask = useMemo(() => {
+		if (!agriOpen || !agriMap) return null;
+		return cropMask(agriMap.owner, state.agriZoneId);
+	}, [agriOpen, agriMap, state.agriZoneId]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: overlaySignature resume overlayData, que cambia de identidad en cada render
+	const mapModels = useMemo(() => {
+		if (region?.id !== "mexicali") return [];
+		const roads = overlayList.flatMap((overlay, index) =>
+			overlay.kind === "road" ? (overlayData[index]?.data ?? []) : [],
+		);
+		return placeMapModels({
+			landcover: landData.data ?? null,
+			width: region.width,
+			height: region.height,
+			roads,
+			crops: agriOpen,
+			settlements: Boolean(landData.data),
+			cars: roads.length > 0,
+		});
+	}, [region, landData.data, overlayList, overlaySignature, agriOpen]);
+	useEffect(() => {
+		if (!selectedAgri) return;
+		flight.target = { col: selectedAgri.col, row: selectedAgri.row };
+	}, [selectedAgri, flight]);
+	const wayHit = useMemo(() => {
+		if (!selectedAgri || !region) return null;
+		return nearestWaterway(
+			selectedAgri.cells,
+			region.width,
+			region.cellSizeM,
+			waterways,
+		);
+	}, [selectedAgri, region, waterways]);
+	const moistureIndex = moistureLayer
+		? Math.max(nearestDateIndex(moistureLayer.dates, currentDate), 0)
+		: 0;
+	const signalIndex = (dates: string[]) =>
+		Math.max(nearestDateIndex(dates, currentDate), 0);
+	const agriPlane = region ? region.width * region.height : 0;
+	const asInt16 = (data: Int16Array | Uint8Array | undefined) =>
+		data instanceof Int16Array ? data : null;
+	const asBytes = (data: Int16Array | Uint8Array | undefined) =>
+		data instanceof Uint8Array ? data : null;
 
 	// El inspector lee todas las capas de la región al tocar un punto.
 	const inspectQueries = useQueries({
@@ -561,7 +684,12 @@ function ExplorerScene() {
 			if (seg) {
 				const f = o.features[seg.feature];
 				inspectorRows.push({
-					name: o.kind === "canal" ? "Canal" : "Camino",
+					name:
+						o.kind === "canal"
+							? "Canal"
+							: o.kind === "river"
+								? "Río"
+								: "Camino",
 					value: f.name || f.class,
 				});
 			}
@@ -595,6 +723,66 @@ function ExplorerScene() {
 	const currentSource = shownLayer ? sourceAt(shownLayer, currentDate) : null;
 
 	const sceneReady = terrain.data && readyRegion === region.id;
+	const agriList = agriMap
+		? listedZones(agriMap.zones)
+		: { listed: [], omitted: false };
+	const selectedSeries =
+		selectedAgri && moistureLayer
+			? moistureSeries(
+					selectedAgri.cells,
+					asInt16(moistureQ.data),
+					moistureLayer.dates.length,
+					agriPlane,
+					moistureLayer.scale,
+					moistureLayer.nodata,
+				)
+			: [];
+	const compareColumns = [selectedAgri?.id, ...state.agriCompare]
+		.filter((id): id is number => id !== undefined)
+		.flatMap((id) => {
+			const zone = agriMap?.zones[id];
+			if (!zone || !moistureLayer) return [];
+			return [
+				{
+					id,
+					areaKm2: zone.areaKm2,
+					values: moistureSeries(
+						zone.cells,
+						asInt16(moistureQ.data),
+						moistureLayer.dates.length,
+						agriPlane,
+						moistureLayer.scale,
+						moistureLayer.nodata,
+					),
+				},
+			];
+		});
+	const compared = alignSeries(
+		compareColumns.map((column) => ({
+			dates: moistureLayer?.dates ?? [],
+			values: column.values,
+		})),
+	);
+	const waterIndex = waterLayer
+		? Math.max(nearestDateIndex(waterLayer.dates, currentDate), 0)
+		: 0;
+	const waterTouch =
+		selectedAgri && waterData.data
+			? waterBeside(
+					selectedAgri.cells,
+					categoricalPlane(waterData.data, agriPlane, waterIndex),
+					region.width,
+					region.height,
+				)
+			: { permanent: false, fresh: false };
+	const agriWater = selectedAgri
+		? waterLines(
+				wayHit,
+				waterTouch,
+				waterways.some((way) => way.kind === "river"),
+			)
+		: [];
+	const signalDate = (dates: string[]) => signalIndex(dates);
 
 	return (
 		<FlightContext.Provider value={flight}>
@@ -628,10 +816,36 @@ function ExplorerScene() {
 								bands={rasterBands ?? zoneData?.bands ?? null}
 								bandPalette={raster ? bandPalette : BAND_COLORS}
 								contour={!raster}
-								onPick={(col, row) => store.actions.setInspected({ col, row })}
-								overlays={overlayModels.filter((o) => overlayOn(state, o.id))}
+								onPick={(col, row) => {
+									store.actions.setInspected({ col, row });
+									if (!agriMap || !landData.data) return;
+									const zone = zoneAt(
+										agriMap,
+										landData.data,
+										region.width,
+										col,
+										row,
+									);
+									if (!zone) return;
+									setCompareRejected(false);
+									store.actions.setAgricultureOpen(true);
+									store.actions.setAgriZone(zone.id);
+								}}
+								overlays={overlayModels
+									.filter((o) => overlayOn(state, o.id))
+									.map((o) => ({
+										...o,
+										flags: paintWayFlags(
+											o.flags,
+											o.segments,
+											wayHit?.overlayId === o.id ? wayHit.feature : null,
+										),
+									}))}
 								arrows={raster?.id === "east-west" ? rasterField : null}
 								zones={zones}
+								agriCells={selectedAgri?.cells ?? null}
+								agriMask={agriMask}
+								mapModels={mapModels}
 								zoneLabels={zoneLabels}
 								deformScale={deformScale}
 								deformCube={deformCube}
@@ -711,6 +925,11 @@ function ExplorerScene() {
 						}
 						onOpenSettings={() => store.actions.setSettingsOpen(true)}
 						onOpenEvents={() => store.actions.setEventsOpen(!state.eventsOpen)}
+						onOpenAgriculture={
+							region.id === "mexicali"
+								? () => store.actions.setAgricultureOpen(!state.agricultureOpen)
+								: undefined
+						}
 						notice={<DataNotice source={currentSource} />}
 					/>
 					{compact && (
@@ -723,7 +942,7 @@ function ExplorerScene() {
 					)}
 
 					<div className="flex min-h-0 flex-1 items-start justify-between gap-3">
-						<div className="flex max-h-full min-h-0 flex-col gap-3 overflow-y-auto">
+						<div className="scroll-thin flex max-h-full min-h-0 flex-col gap-3 overflow-y-auto">
 							{!compact && (
 								<PoiList
 									manifest={manifest.data}
@@ -732,8 +951,87 @@ function ExplorerScene() {
 									compact={false}
 								/>
 							)}
+							{agriOpen && (
+								<AgriculturePanel
+									missingCover={!landLayer || landData.isError}
+									loading={!landData.data && landData.isPending}
+									listed={agriList.listed}
+									omitted={agriList.omitted}
+									selected={selectedAgri}
+									rejected={compareRejected}
+									moisture={selectedSeries[moistureIndex] ?? null}
+									dates={moistureLayer?.dates ?? []}
+									activeIndex={moistureIndex}
+									selectedSeries={selectedSeries}
+									columns={compareColumns.map((column, index) => ({
+										...column,
+										values: compared.columns[index] ?? column.values,
+									}))}
+									vegetation={
+										selectedAgri && hvLayer
+											? vegetationWord(
+													selectedAgri.cells,
+													asInt16(hvQ.data),
+													signalDate(hvLayer.dates),
+													agriPlane,
+													hvLayer.scale,
+													hvLayer.nodata,
+												)
+											: null
+									}
+									change={
+										selectedAgri && changeLayer
+											? changeWord(
+													selectedAgri.cells,
+													asBytes(changeQ.data),
+													signalDate(changeLayer.dates),
+													agriPlane,
+													changeLayer.nodata,
+												)
+											: null
+									}
+									disturbance={
+										selectedAgri && disturbanceLayer
+											? disturbanceWord(
+													selectedAgri.cells,
+													asBytes(disturbanceQ.data),
+													signalDate(disturbanceLayer.dates),
+													agriPlane,
+													disturbanceLayer.nodata,
+												)
+											: null
+									}
+									water={agriWater}
+									onSelect={(id) => {
+										setCompareRejected(false);
+										store.actions.setAgriZone(id);
+									}}
+									onCompare={(id) => {
+										if (state.agriZoneId === null) {
+											setCompareRejected(false);
+											store.actions.setAgriZone(id);
+											return;
+										}
+										const next = withComparison(
+											state.agriZoneId,
+											state.agriCompare,
+											id,
+										);
+										setCompareRejected(next.rejected);
+										if (!next.rejected)
+											store.actions.setAgriCompare(next.extras);
+									}}
+									onRemove={(id) => {
+										setCompareRejected(false);
+										store.actions.setAgriCompare(
+											state.agriCompare.filter((item) => item !== id),
+										);
+									}}
+									onClose={() => store.actions.setAgricultureOpen(false)}
+								/>
+							)}
 						</div>
-						<div className="flex max-h-full min-h-0 flex-col items-end gap-3 overflow-y-auto">
+						<div className="scroll-thin flex max-h-full min-h-0 flex-col items-end gap-3 overflow-y-auto">
 							{state.eventsOpen && (
 								<SidePanel
 									title="Eventos detectados"

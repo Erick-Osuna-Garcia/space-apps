@@ -1,4 +1,11 @@
-import { BookOpen, Info, ListChecks, Satellite, Settings } from "lucide-react";
+import {
+	BookOpen,
+	Info,
+	ListChecks,
+	Satellite,
+	Settings,
+	Sprout,
+} from "lucide-react";
 import type { Region } from "../manifest";
 import { Panel } from "./Panel";
 
@@ -9,6 +16,8 @@ interface TopBarProps {
 	onOpenCredits: () => void;
 	onOpenSettings: () => void;
 	onOpenEvents: () => void;
+	/** Solo el Valle de Mexicali ofrece la lectura agrícola. */
+	onOpenAgriculture?: () => void;
 	/** Aviso de origen de los datos, bajo el nombre de la región. */
 	notice?: React.ReactNode;
 }
@@ -20,6 +29,7 @@ export function TopBar({
 	onOpenCredits,
 	onOpenSettings,
 	onOpenEvents,
+	onOpenAgriculture,
 	notice,
 }: TopBarProps) {
 	return (
@@ -41,6 +51,11 @@ export function TopBar({
 				{notice}
 			</Panel>
 			<div className="pointer-events-auto flex gap-2">
+				{onOpenAgriculture && (
+					<HudButton onClick={onOpenAgriculture} label="Cultivos">
+						<Sprout className="size-4" aria-hidden />
+					</HudButton>
+				)}
 				<HudButton onClick={onOpenEvents} label="Eventos">
 					<ListChecks className="size-4" aria-hidden />
 				</HudButton>

@@ -9,7 +9,11 @@ const LIFT = 0.12;
 const MIN_WIDTH_PX = 1.6;
 const CASING_PX = 1.2;
 const NEVER_HIDES = 1e9;
-const CASING_COLORS = { road: "#1e293b", canal: "#0c2a44" };
+const CASING_COLORS = {
+	road: "#1e293b",
+	canal: "#0c2a44",
+	river: "#082f49",
+};
 
 const VERTEX = /* glsl */ `
 precision highp sampler2DArray;
@@ -48,14 +52,15 @@ float dispAt(vec2 p) {
 
 void main() {
   int cls = int(aClass + 0.5);
+  float mark = min(aHit, 1.0);
   float halfWidth = max(uHalfWidths[cls], uMinWidthPx * 0.5 * uUnitsPerPx);
-  halfWidth = halfWidth * mix(1.0, 1.25, aHit) + uCasingPx * uUnitsPerPx;
+  halfWidth = halfWidth * mix(1.0, 1.25, mark) + uCasingPx * uUnitsPerPx;
   vec3 p = position;
   p.xz += aSide * halfWidth;
   p.y += uLift;
   if (uDeform > 0.0) p.y += dispAt(p.xz) * uDeform;
   float maxCells = uMaxCells[cls];
-  vFade = max(aHit, 1.0 - smoothstep(maxCells * 0.8, maxCells, uVisibleCells));
+  vFade = max(mark, 1.0 - smoothstep(maxCells * 0.8, maxCells, uVisibleCells));
   vColor = uColors[cls];
   vHit = aHit;
   vAlong = aAlong;
@@ -64,23 +69,26 @@ void main() {
 
 const FRAGMENT = /* glsl */ `
 uniform float uCasing, uFlow, uTime;
-uniform vec3 uHitColor, uCasingColor;
+uniform vec3 uHitColor, uAgriColor, uCasingColor;
 varying vec3 vColor;
 varying float vFade, vHit, vAlong;
 
 void main() {
   if (vFade < 0.01) discard;
-  vec3 color = mix(vColor, uHitColor, vHit);
+  float subsidence = step(0.5, vHit) * (1.0 - step(1.5, vHit));
+  float agri = step(1.5, vHit);
+  vec3 color = mix(vColor, uHitColor, subsidence);
+  color = mix(color, uAgriColor, agri);
   // brillo que avanza por el canal
   float flow = smoothstep(0.6, 1.0, sin(vAlong * 0.9 - uTime * 2.2));
-  color += vec3(0.35) * flow * uFlow * (1.0 - vHit);
+  color += vec3(0.35) * flow * uFlow * (1.0 - min(vHit, 1.0));
   gl_FragColor = vec4(mix(color, uCasingColor, uCasing), vFade);
   #include <colorspace_fragment>
 }`;
 
 function ribbonMaterial(
 	terrain: LayerUniforms,
-	kind: "road" | "canal",
+	kind: "road" | "canal" | "river",
 	casing: boolean,
 	shared: {
 		uUnitsPerPx: { value: number };
@@ -115,8 +123,9 @@ function ribbonMaterial(
 			uCasingPx: { value: casing ? CASING_PX : 0 },
 			uLift: { value: LIFT },
 			uCasing: { value: casing ? 1 : 0 },
-			uFlow: { value: kind === "canal" ? 1 : 0 },
+			uFlow: { value: kind === "road" ? 0 : 1 },
 			uHitColor: { value: new THREE.Color("#ff1744") },
+			uAgriColor: { value: new THREE.Color("#fef08a") },
 			uCasingColor: { value: new THREE.Color(CASING_COLORS[kind]) },
 		},
 	});
@@ -124,7 +133,7 @@ function ribbonMaterial(
 
 interface InfrastructureProps {
 	features: Feature[];
-	kind: "road" | "canal";
+	kind: "road" | "canal" | "river";
 	flags: Uint8Array;
 	baseHeightAt: (col: number, row: number) => number;
 	terrain: LayerUniforms;
@@ -188,7 +197,7 @@ export function Infrastructure({
 	});
 
 	// el borde se dibuja antes para que los cruces se vean limpios
-	const order = kind === "canal" ? 1 : 3;
+	const order = kind === "road" ? 3 : 1;
 	return (
 		<>
 			<mesh

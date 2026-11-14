@@ -70,6 +70,18 @@ describe("explorer store", () => {
 		expect(store.state.waterMotion).toBe(false);
 	});
 
+	it("elegir una zona agrícola no cambia la vista de movimiento", () => {
+		const store = createExplorerStore();
+		store.actions.setMapView("velocity");
+		store.actions.setAgriZone(4);
+		store.actions.setAgriCompare([1, 2]);
+		expect(store.state.mapView).toBe("velocity");
+		expect(store.state.agriZoneId).toBe(4);
+		store.actions.setAgriZone(1);
+		expect(store.state.agriCompare).toEqual([2]);
+		expect(store.state.mapView).toBe("velocity");
+	});
+
 	it("modos de análisis", () => {
 		const store = createExplorerStore();
 		expect(store.state).toMatchObject({

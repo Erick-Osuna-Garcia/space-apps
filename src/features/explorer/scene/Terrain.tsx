@@ -68,6 +68,8 @@ interface TerrainProps {
 	water: WaterData | null;
 	/** Oleaje y ondas encendidos. */
 	waterMotion: boolean;
+	/** Máscara de cultivo: 1 zona, 2 elegida. null = no pintar. */
+	agriMask: Uint8Array | null;
 }
 
 export function Terrain({
@@ -94,6 +96,7 @@ export function Terrain({
 	uniforms,
 	water,
 	waterMotion,
+	agriMask,
 }: TerrainProps) {
 	const flight = useFlight();
 	const geo = useMemo(
@@ -125,6 +128,7 @@ export function Terrain({
 			uniforms.uBands.value.dispose();
 			uniforms.uDeformCube.value.dispose();
 			uniforms.uWater.value.dispose();
+			uniforms.uAgri.value.dispose();
 		},
 		[material, skirtMaterial, uniforms],
 	);
@@ -202,6 +206,18 @@ export function Terrain({
 		uniforms.uContour.value = contour ? 1 : 0;
 	}, [bandPalette, contour, uniforms]);
 
+	useEffect(() => {
+		if (!agriMask) {
+			uniforms.uAgriOn.value = 0;
+			return;
+		}
+		const next = bandsTexture(agriMask, region.width, region.height);
+		next.generateMipmaps = false;
+		uniforms.uAgri.value.dispose();
+		uniforms.uAgri.value = next;
+		uniforms.uAgriOn.value = 1;
+	}, [agriMask, region, uniforms]);
+
 	// Bandas de la vista Zonas.
 	useEffect(() => {
 		if (!bands) return;
@@ -234,7 +250,7 @@ export function Terrain({
 		const on = Boolean(
 			visible && (paintMode === PaintMode.CUBE ? hasCube : ready || hasCube),
 		);
-		uniforms.uLayerOn.value = on ? 1 : 0;
+		uniforms.uLayerOn.value = on ? 1 : 0
 		uniforms.uOpacity.value = opacity;
 		uniforms.uMode.value = ready ? paintMode : PaintMode.CUBE;
 		uniforms.uDeform.value = visible && hasCube && deformCube ? deformScale : 0;

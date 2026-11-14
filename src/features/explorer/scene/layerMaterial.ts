@@ -55,6 +55,9 @@ export interface LayerUniforms {
 	uWaterMix: { value: number };
 	/** Segundos de animación; se congela con el agua quieta. */
 	uTime: { value: number };
+	/** 0 fuera, 1 zona de cultivo, 2 la zona elegida. */
+	uAgri: { value: THREE.DataTexture };
+	uAgriOn: { value: number };
 	/** Ondas: col, fila y momento de nacimiento. */
 	uRipples: { value: THREE.Vector3[] };
 }
@@ -234,6 +237,8 @@ export function createLayerUniforms(): LayerUniforms {
 				() => new THREE.Vector3(0, 0, -1e4),
 			),
 		},
+		uAgri: { value: bandsTexture(new Uint8Array([0]), 1, 1) },
+		uAgriOn: { value: 0 },
 	};
 }
 
@@ -296,7 +301,8 @@ uniform vec2 uTexel;
 uniform float uDateA, uDateB, uMix, uOpacity, uLimit, uLayerOn, uMode, uFieldLimit, uFieldMin, uContour;
 uniform vec3 uNoData;
 uniform sampler2DArray uWater;
-uniform float uWaterOn, uWaterA, uWaterB, uWaterMix, uTime;
+uniform sampler2D uAgri;
+uniform float uWaterOn, uWaterA, uWaterB, uWaterMix, uTime, uAgriOn;
 uniform vec3 uRipples[${MAX_RIPPLES}];
 varying vec2 vGridUv;
 // oleaje: gradiente de cuatro ondas direccionales, en celdas
@@ -402,6 +408,13 @@ if (uWaterOn > 0.5 && !layerPainted) {
     diffuseColor.rgb = mix(diffuseColor.rgb, tint, waterAmount);
     waterGlint = pow(clamp(0.5 + dot(slope, vec2(1.6, 1.1)), 0.0, 1.0), 28.0) * 0.3 * detail * waterAmount;
   }
+}
+if (uAgriOn > 0.5 && waterAmount < 0.45) {
+  float mark = texture(uAgri, vGridUv).r;
+  if (mark > 0.002) {
+    vec3 crop = mark > 0.006 ? vec3(0.996, 0.941, 0.541) : vec3(0.22, 0.72, 0.28);
+    diffuseColor.rgb = mix(diffuseColor.rgb, crop, 0.82);
+  }
 }`,
 			)
 			.replace(
@@ -424,6 +437,6 @@ if (waterAmount > 0.001) {
 totalEmissiveRadiance += vec3(1.0, 0.95, 0.82) * waterGlint;`,
 			);
 	};
-	material.customProgramCacheKey = () => "terrain-layer-v7";
+	material.customProgramCacheKey = () => "terrain-layer-v10";
 	return material;
 }
