@@ -15,6 +15,8 @@ export const CROP_VARIANTS = [
 	{ id: "alfalfa", label: "Alfalfa", weight: 5 },
 	{ id: "cebollin", label: "Cebollín", weight: 3 },
 	{ id: "esparrago", label: "Espárrago", weight: 2 },
+	{ id: "sorgo", label: "Sorgo", weight: 2 },
+	{ id: "cebolla", label: "Cebolla", weight: 2 },
 	{ id: "col", label: "Col de Bruselas", weight: 1 },
 	{ id: "cilantro", label: "Cilantro", weight: 1 },
 	{ id: "espinaca", label: "Espinaca", weight: 1 },

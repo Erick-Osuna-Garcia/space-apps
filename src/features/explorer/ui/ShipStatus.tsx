@@ -99,6 +99,50 @@ export function ShipStatus({
 	const size = sizeComparison(main);
 	const speed = shipSpeedKmh(probe.vx ?? 0, probe.vz ?? 0, region.cellSizeM);
 	const flying = speed > 0;
+	const sensor = loading
+		? "Cargando…"
+		: failed
+			? "Sin datos"
+			: reading && !series
+				? reading
+				: series && main === null
+					? "Sin lectura"
+					: main !== null
+						? `${main > 0 ? "+" : ""}${main.toFixed(1)} ${unit}`
+						: (reading ?? "—");
+
+	if (compact) {
+		return (
+			<Panel className="flex w-full min-w-0 items-center gap-2 px-3 py-1.5">
+				<span
+					aria-hidden
+					className={cn(
+						"inline-block size-2 shrink-0 rounded-full",
+						flying ? "bg-emerald-400" : "bg-amber-300",
+					)}
+				/>
+				<p className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-200">
+					{flying ? "En vuelo" : "Detenida"}
+					{flying ? ` · ${speed.toLocaleString("es-MX")} km/h` : ""}
+					{place ? ` · ${place.text}` : ""}
+				</p>
+				<p className="max-w-[46%] shrink-0 truncate text-right font-extrabold text-sm text-white tabular-nums">
+					{sensor}
+				</p>
+				<InfoHint label="Sensor de suelo">
+					<p>
+						La nave lee lo que mide el radar justo debajo, en su línea de vista:
+						negativo es que el suelo se alejó del satélite.
+					</p>
+					<p>
+						Estable: menos de 1 cm/año. Lento: 1 a 3. Moderado: 3 a 8. Rápido:
+						más de 8.
+					</p>
+					<p>Son niveles orientativos, no una evaluación de riesgo.</p>
+				</InfoHint>
+			</Panel>
+		);
+	}
 
 	return (
 		<Panel className={compact ? "px-3 py-2" : "w-64 p-3"}>

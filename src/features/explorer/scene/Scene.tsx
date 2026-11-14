@@ -6,7 +6,7 @@ import type { Palette } from "../lib/colormap";
 import { gridToLonLat } from "../lib/grid";
 import type { Zone } from "../lib/impact";
 import type { Feature } from "../lib/infrastructure";
-import type { MapModel } from "../lib/mapModels";
+import type { MapModel, CropId } from "../lib/mapModels";
 import type { Layer, Region } from "../manifest";
 import type { ExplorerStore } from "../store";
 import { AgriculturalOutline } from "./AgriculturalOutline";
@@ -100,7 +100,10 @@ export interface SceneProps {
 	/** Máscara de cultivo sobre el terreno. null la apaga. */
 	agriMask: Uint8Array | null;
 	mapModels: MapModel[];
+	/** Cultivo del diagrama que debe verse más grande. */
+	modelFocus: CropId | null;
 	cityMask: Uint8Array | null;
+	cityLive: boolean;
 	zoneLabels: React.RefObject<Map<string, HTMLElement>>;
 	deformScale: number;
 	deformCube: Float32Array | null;
@@ -162,6 +165,7 @@ export function Scene(props: SceneProps) {
 				waterMotion={props.waterMotion}
 				agriMask={props.agriMask}
 				cityMask={props.cityMask}
+				cityLive={props.cityLive}
 			/>
 			<PoiMarkers
 				pois={region.pois}
@@ -200,7 +204,11 @@ export function Scene(props: SceneProps) {
 				heightAt={props.heightAt}
 				labels={props.zoneLabels}
 			/>
-			<MapModels models={props.mapModels} heightAt={props.heightAt} />
+			<MapModels
+				models={props.mapModels}
+				heightAt={props.heightAt}
+				focus={props.modelFocus}
+			/>
 			<Ship keys={props.keys} reducedMotion={props.reducedMotion} />
 			<ProbePublisher region={region} store={props.store} />
 		</>

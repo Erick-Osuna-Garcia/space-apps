@@ -63,6 +63,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --sea-ink: #d7ece8;
   --sea-ink-soft: #afcdc8;
   --lagoon: #60d7cf;
@@ -161,6 +162,34 @@ html,
 body,
 #app {
   min-height: 100%;
+}
+
+html {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  color-scheme: dark;
+}
+
+@media (pointer: fine) {
+  html {
+    overscroll-behavior: none;
+  }
+}
+
+.hud-safe {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+  padding-right: max(0.75rem, env(safe-area-inset-right));
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+}
+
+@media (min-width: 640px) {
+  .hud-safe {
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
 }
 
 body {
@@ -457,6 +486,8 @@ html.dark body {
 	text-decoration-color: #fbbf24;
 	text-decoration-thickness: 2px;
 	text-underline-offset: 3px;
+}
+.city-label-live {
 	animation: city-label-glow 1.15s ease-in-out infinite;
 }
 @keyframes city-label-glow {
@@ -469,7 +500,7 @@ html.dark body {
 	}
 }
 @media (prefers-reduced-motion: reduce) {
-	.city-label {
+	.city-label-live {
 		animation: none;
 		box-shadow: 0 0 12px 3px rgba(251, 191, 36, 0.75);
 	}

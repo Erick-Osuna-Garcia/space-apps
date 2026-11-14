@@ -16,16 +16,16 @@ interface InspectorProps {
 /** Qué dice cada capa del punto tocado en el mapa. */
 export function Inspector({ place, coords, rows, onClose }: InspectorProps) {
 	return (
-		<Panel className="w-full p-3 sm:w-72">
+		<Panel className="max-h-[min(32dvh,16rem)] w-full overflow-y-auto overscroll-contain p-3 sm:max-h-none sm:w-72">
 			<div className="flex items-center justify-between px-1">
-				<PanelTitle className="flex items-center gap-1.5">
-					<MapPinned className="size-3.5" aria-hidden /> Este punto
+				<PanelTitle className="flex min-w-0 items-center gap-1.5">
+					<MapPinned className="size-3.5 shrink-0" aria-hidden /> Este punto
 				</PanelTitle>
 				<button
 					type="button"
 					onClick={onClose}
 					aria-label="Cerrar inspector"
-					className="rounded-lg p-1 text-slate-400 transition hover:bg-white/10 hover:text-white"
+					className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-[color,background-color] hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-cyan-300 sm:size-8"
 				>
 					<X className="size-4" aria-hidden />
 				</button>

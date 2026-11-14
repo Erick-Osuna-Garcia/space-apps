@@ -43,7 +43,7 @@ const fmt = (value: number | null) =>
 
 export function AgriculturePanel(props: AgriculturePanelProps) {
 	return (
-		<Panel className="flex max-h-[70dvh] min-h-0 w-full flex-col overflow-hidden p-3 sm:w-80">
+		<Panel className="flex max-h-[min(42dvh,22rem)] min-h-0 w-full flex-col overflow-hidden p-3 sm:max-h-[70dvh] sm:w-80">
 			<div className="flex shrink-0 items-center justify-between gap-2 px-1">
 				<PanelTitle className="flex items-center gap-1.5">
 					<Sprout className="size-3.5" aria-hidden />
@@ -61,7 +61,7 @@ export function AgriculturePanel(props: AgriculturePanelProps) {
 						type="button"
 						onClick={props.onClose}
 						aria-label="Cerrar cultivos"
-						className="rounded-lg p-1 text-slate-400 transition hover:bg-white/10 hover:text-white"
+						className="inline-flex size-11 items-center justify-center rounded-lg text-slate-400 transition-[color,background-color] hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-cyan-300 sm:size-8"
 					>
 						<X className="size-4" aria-hidden />
 					</button>
@@ -74,13 +74,13 @@ export function AgriculturePanel(props: AgriculturePanelProps) {
 			) : props.loading ? (
 				<p className="mt-2 px-1 text-xs text-slate-400">Cargando cobertura…</p>
 			) : (
-				<ul className="scroll-thin mt-2 max-h-36 shrink-0 space-y-1 overflow-y-auto px-1">
+				<ul className="scroll-thin mt-2 max-h-36 shrink-0 space-y-1 overflow-y-auto overscroll-contain px-1">
 					{props.listed.map((zone) => (
 						<li key={zone.id} className="flex items-center gap-1">
 							<button
 								type="button"
 								onClick={() => props.onSelect(zone.id)}
-								className={`min-w-0 flex-1 rounded-lg border px-2 py-1 text-left text-xs ${
+								className={`min-h-11 min-w-0 flex-1 rounded-lg border px-2 py-2 text-left text-xs focus-visible:outline-2 focus-visible:outline-cyan-300 ${
 									props.selected?.id === zone.id
 										? "zone-selected border-emerald-400"
 										: "border-transparent text-slate-200 hover:bg-white/10"
@@ -100,7 +100,7 @@ export function AgriculturePanel(props: AgriculturePanelProps) {
 							<button
 								type="button"
 								onClick={() => props.onCompare(zone.id)}
-								className="rounded-lg px-2 py-1 text-[0.7rem] text-slate-400 hover:bg-white/10 hover:text-white"
+								className="min-h-11 rounded-lg px-2 text-[0.7rem] text-slate-400 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-cyan-300"
 							>
 								Comparar
 							</button>
@@ -122,7 +122,7 @@ export function AgriculturePanel(props: AgriculturePanelProps) {
 				</p>
 			)}
 			{props.selected && (
-				<div className="scroll-thin mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto px-1 text-xs">
+				<div className="scroll-thin mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-1 text-xs">
 					<p className="font-semibold text-slate-100">
 						Zona {props.selected.id + 1} · humedad{" "}
 						<span className="tabular-nums">{fmt(props.moisture)}</span>
@@ -174,7 +174,7 @@ export function AgriculturePanel(props: AgriculturePanelProps) {
 											<button
 												type="button"
 												onClick={() => props.onRemove(column.id)}
-												className="text-slate-500 hover:text-white"
+												className="min-h-11 px-2 text-slate-500 hover:text-white focus-visible:outline-2 focus-visible:outline-cyan-300"
 											>
 												Quitar
 											</button>

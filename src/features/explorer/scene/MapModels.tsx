@@ -1,15 +1,23 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { CROP_VARIANTS, type CropId, type MapModel } from "../lib/mapModels";
+import {
+	CROP_VARIANTS,
+	type CropId,
+	isCropKind,
+	type MapModel,
+} from "../lib/mapModels";
 
 interface MapModelsProps {
 	models: MapModel[];
 	heightAt: (col: number, row: number) => number;
+	/** Cultivo elegido en el diagrama: crece y los demás cultivos se achican. */
+	focus: CropId | null;
 }
 
 function usePlaced(
 	models: MapModel[],
 	heightAt: (col: number, row: number) => number,
+	gain: number,
 ) {
 	const ref = useRef<THREE.InstancedMesh>(null);
 	useLayoutEffect(() => {
@@ -22,13 +30,13 @@ function usePlaced(
 			if (!model) continue;
 			dummy.position.set(model.col, heightAt(model.col, model.row), model.row);
 			dummy.rotation.set(0, model.yaw, 0);
-			dummy.scale.setScalar(model.scale);
+			dummy.scale.setScalar(model.scale * gain);
 			dummy.updateMatrix();
 			mesh.setMatrixAt(i, dummy.matrix);
 		}
 		mesh.instanceMatrix.needsUpdate = true;
 		mesh.computeBoundingSphere();
-	}, [models, heightAt]);
+	}, [models, heightAt, gain]);
 	return ref;
 }
 
@@ -37,13 +45,15 @@ function Part({
 	heightAt,
 	geometry,
 	color,
+	gain = 1,
 }: {
 	models: MapModel[];
 	heightAt: (col: number, row: number) => number;
 	geometry: THREE.BufferGeometry;
 	color: string;
+	gain?: number;
 }) {
-	const ref = usePlaced(models, heightAt);
+	const ref = usePlaced(models, heightAt, gain);
 	const material = useMemo(
 		() =>
 			new THREE.MeshStandardMaterial({
@@ -126,6 +136,14 @@ const CROP_SHAPES: Record<CropId, Solid[]> = {
 			color: "#65a30d",
 		},
 		{ form: "cone", r: 0.08, h: 0.22, y: 1.32, color: "#84cc16" },
+	],
+	sorgo: [
+		{ form: "cylinder", rt: 0.05, rb: 0.08, h: 1.05, y: 0.52, color: "#854d0e" },
+		{ form: "cone", r: 0.18, h: 0.42, y: 1.15, color: "#ca8a04" },
+	],
+	cebolla: [
+		{ form: "sphere", r: 0.22, y: 0.16, sy: 0.85, color: "#f5e6c8" },
+		{ form: "cone", r: 0.1, h: 0.45, y: 0.48, color: "#4d7c0f" },
 	],
 	col: [{ form: "sphere", r: 0.2, y: 0.2, sy: 0.85, color: "#3f6212" }],
 	cilantro: [
@@ -214,7 +232,7 @@ function solidGeometry(part: Solid) {
 }
 
 /** Plantas, casas, edificios y autos. El origen de cada pieza está en el suelo. */
-export function MapModels({ models, heightAt }: MapModelsProps) {
+export function MapModels({ models, heightAt, focus }: MapModelsProps) {
 	const groups = useMemo(() => {
 		const byKind = new Map<MapModel["kind"], MapModel[]>();
 		for (const model of models) {
@@ -281,6 +299,15 @@ export function MapModels({ models, heightAt }: MapModelsProps) {
 					heightAt={heightAt}
 					geometry={part.geometry}
 					color={part.color}
+					gain={
+						focus == null
+							? 1
+							: part.kind === focus
+								? 1.7
+								: isCropKind(focus)
+									? 0.35
+									: 1
+					}
 				/>
 			))}
 			<Part

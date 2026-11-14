@@ -5,7 +5,8 @@ import type { Region } from "../manifest";
 export const DEFAULT_EXAGGERATION = 3;
 /** El mapa se ve este número de veces más grande que la nave. */
 export const MAP_SCALE = 3;
-export const HOVER_HEIGHT = 7 / MAP_SCALE; // unidades de escena sobre el terreno
+/** Altura de la nave sobre el relieve, en unidades de escena. */
+export const HOVER_HEIGHT = 48 / MAP_SCALE;
 
 /** Unidades de escena por metro de altura (1 unidad horizontal = 1 celda). */
 export const verticalScale = (region: Region, exaggeration: number) =>

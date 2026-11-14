@@ -59,20 +59,20 @@ export function SidePanel({
 		<Panel
 			role="complementary"
 			aria-label={title}
-			className="flex max-h-full w-full flex-col overflow-hidden sm:w-[26rem]"
+			className="flex max-h-[min(42dvh,22rem)] w-full flex-col overflow-hidden sm:max-h-full sm:w-[26rem]"
 		>
-			<div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-				<PanelTitle>{title}</PanelTitle>
+			<div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3">
+				<PanelTitle className="min-w-0 text-pretty">{title}</PanelTitle>
 				<button
 					type="button"
 					onClick={onClose}
 					aria-label="Cerrar"
-					className="rounded-lg p-1 text-slate-400 transition hover:bg-white/10 hover:text-white"
+					className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-[color,background-color] hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-cyan-300"
 				>
 					<X className="size-4" aria-hidden />
 				</button>
 			</div>
-			<div className="overflow-y-auto px-4 py-3 text-sm leading-relaxed text-slate-300">
+			<div className="overflow-y-auto overscroll-contain px-4 py-3 text-sm leading-relaxed text-slate-300">
 				{children}
 			</div>
 		</Panel>
@@ -267,7 +267,7 @@ export function WarpOverlay({
 
 export function ControlsHint({ compact }: { compact: boolean }) {
 	return (
-		<p className="pointer-events-none rounded-xl bg-slate-950/60 px-3 py-1.5 text-xs text-slate-300 backdrop-blur">
+		<p className="pointer-events-none rounded-xl bg-slate-950/60 px-3 py-1.5 text-pretty text-xs text-slate-300 backdrop-blur">
 			{compact ? (
 				"Toca el terreno para volar · pellizca para zoom"
 			) : (

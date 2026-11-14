@@ -72,6 +72,8 @@ interface TerrainProps {
 	agriMask: Uint8Array | null;
 	/** 255 dentro de la ciudad. null = no pintar. */
 	cityMask: Uint8Array | null;
+	/** El sombreado de la ciudad parpadea solo mientras está elegida. */
+	cityLive: boolean;
 }
 
 export function Terrain({
@@ -100,6 +102,7 @@ export function Terrain({
 	waterMotion,
 	agriMask,
 	cityMask,
+	cityLive,
 }: TerrainProps) {
 	const flight = useFlight();
 	const geo = useMemo(
@@ -270,9 +273,10 @@ export function Terrain({
 		uniforms.uOpacity.value = opacity;
 		uniforms.uMode.value = ready ? paintMode : PaintMode.CUBE;
 		uniforms.uDeform.value = visible && hasCube && deformCube ? deformScale : 0;
-		uniforms.uCityPulse.value = reducedMotion
-			? 1
-			: 0.5 + 0.5 * Math.sin(performance.now() * 0.004);
+		uniforms.uCityPulse.value =
+			!cityLive || reducedMotion
+				? 0.35
+				: 0.5 + 0.5 * Math.sin(performance.now() * 0.004);
 		if (uniforms.uMix.value < 1) {
 			uniforms.uMix.value = Math.min(
 				1,

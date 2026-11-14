@@ -27,14 +27,14 @@ export function PoiList({
 
 	if (compact) {
 		return (
-			<div className="pointer-events-auto -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+			<div className="pointer-events-auto flex snap-x gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 				{items.map(({ region, poi }) => (
 					<button
 						key={`${region.id}/${poi.id}`}
 						type="button"
 						onClick={() => onSelect(region, poi)}
 						className={cn(
-							"flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold backdrop-blur-md",
+							"flex min-h-11 shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 text-xs font-semibold backdrop-blur-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300",
 							region.id === activeRegionId
 								? "border-amber-300/40 bg-slate-950/80 text-amber-100"
 								: "border-cyan-300/30 bg-slate-950/80 text-cyan-100",

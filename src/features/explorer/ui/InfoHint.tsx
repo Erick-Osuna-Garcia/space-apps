@@ -13,7 +13,7 @@ export function InfoHint({
 		<Popover.Root>
 			<Popover.Trigger
 				aria-label={`Ayuda: ${label}`}
-				className="pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-cyan-200 focus-visible:outline-2 focus-visible:outline-cyan-300"
+				className="pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-full text-slate-400 transition-[color,background-color] hover:bg-white/10 hover:text-cyan-200 focus-visible:outline-2 focus-visible:outline-cyan-300 sm:size-6"
 			>
 				<CircleHelp className="size-4" aria-hidden />
 			</Popover.Trigger>
@@ -23,7 +23,7 @@ export function InfoHint({
 					align="center"
 					sideOffset={8}
 					collisionPadding={12}
-					className="z-50 max-w-72 space-y-1.5 rounded-xl border border-cyan-300/30 bg-slate-950 px-3.5 py-3 text-slate-200 text-xs leading-relaxed shadow-2xl outline-none"
+					className="z-50 max-w-72 space-y-1.5 rounded-xl border border-cyan-300/30 bg-slate-950 px-3.5 py-3 text-slate-200 text-xs leading-relaxed shadow-2xl focus-visible:outline-2 focus-visible:outline-cyan-300"
 				>
 					<p className="font-bold text-sm text-white">{label}</p>
 					{children}

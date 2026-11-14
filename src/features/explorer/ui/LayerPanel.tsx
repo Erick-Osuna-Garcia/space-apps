@@ -118,7 +118,7 @@ export function LayerPanel({
 										aria-pressed={item.view === active?.view}
 										onClick={() => onSelect(item)}
 										className={cn(
-											"w-full rounded-lg px-2.5 py-1.5 text-left font-semibold text-sm transition disabled:cursor-not-allowed disabled:opacity-40",
+											"min-h-11 w-full rounded-lg px-2.5 py-2 text-left font-semibold text-sm transition-[color,background-color] focus-visible:outline-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-0 sm:py-1.5",
 											item.view === active?.view
 												? "bg-cyan-400 text-slate-950"
 												: "text-slate-200 hover:bg-white/10",
@@ -184,7 +184,7 @@ export function Segmented<T extends string | number>({
 						disabled={o.disabled}
 						onClick={() => onChange(o.value)}
 						className={cn(
-							"flex-1 rounded-md px-1.5 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40",
+							"min-h-11 flex-1 rounded-md px-1.5 py-2 text-xs font-semibold text-pretty transition-[color,background-color] focus-visible:outline-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-0 sm:py-1",
 							o.value === value
 								? "bg-cyan-400 text-slate-950"
 								: "text-slate-300 hover:text-white",
