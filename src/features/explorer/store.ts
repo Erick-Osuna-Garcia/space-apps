@@ -148,7 +148,12 @@ export function createExplorerStore(initial = initialExplorerState()) {
 			setState((s) => ({ ...s, inspected }));
 		},
 		setEventsOpen(eventsOpen: boolean) {
-			setState((s) => ({ ...s, eventsOpen }));
+			setState((s) => ({
+				...s,
+				eventsOpen,
+				contextOpen: eventsOpen ? false : s.contextOpen,
+				creditsOpen: eventsOpen ? false : s.creditsOpen,
+			}));
 		},
 		setSettingsOpen(settingsOpen: boolean) {
 			setState((s) => ({ ...s, settingsOpen }));
@@ -169,10 +174,20 @@ export function createExplorerStore(initial = initialExplorerState()) {
 			setState((s) => ({ ...s, warping }));
 		},
 		setContextOpen(contextOpen: boolean) {
-			setState((s) => ({ ...s, contextOpen }));
+			setState((s) => ({
+				...s,
+				contextOpen,
+				eventsOpen: contextOpen ? false : s.eventsOpen,
+				creditsOpen: contextOpen ? false : s.creditsOpen,
+			}));
 		},
 		setCreditsOpen(creditsOpen: boolean) {
-			setState((s) => ({ ...s, creditsOpen }));
+			setState((s) => ({
+				...s,
+				creditsOpen,
+				eventsOpen: creditsOpen ? false : s.eventsOpen,
+				contextOpen: creditsOpen ? false : s.contextOpen,
+			}));
 		},
 		setAgricultureOpen(agricultureOpen: boolean) {
 			setState((s) => ({ ...s, agricultureOpen }));

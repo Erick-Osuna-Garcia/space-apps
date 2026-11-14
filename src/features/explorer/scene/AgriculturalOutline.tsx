@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from "react";
+import { useFrame } from "@react-three/fiber";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 
 interface AgriculturalOutlineProps {
@@ -48,14 +49,28 @@ export function AgriculturalOutline({
 		);
 		return geo;
 	}, [cells, width, height, heightAt]);
+	const material = useRef<THREE.LineBasicMaterial>(null);
 	useEffect(() => () => geometry.dispose(), [geometry]);
+	useFrame(() => {
+		const line = material.current;
+		if (!line) return;
+		const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+		line.opacity = reduce
+			? 1
+			: 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(performance.now() * 0.004));
+	});
 	return (
 		<lineSegments
 			geometry={geometry}
 			frustumCulled={false}
 			raycast={() => null}
 		>
-			<lineBasicMaterial color="#fef08a" />
+			<lineBasicMaterial
+				ref={material}
+				color="#4ade80"
+				transparent
+				opacity={1}
+			/>
 		</lineSegments>
 	);
 }

@@ -58,6 +58,11 @@ export interface LayerUniforms {
 	/** 0 fuera, 1 zona de cultivo, 2 la zona elegida. */
 	uAgri: { value: THREE.DataTexture };
 	uAgriOn: { value: number };
+	/** 255 dentro de la ciudad, 0 fuera. */
+	uCity: { value: THREE.DataTexture };
+	uCityOn: { value: number };
+	/** 0–1, parpadeo del sombreado de la ciudad. */
+	uCityPulse: { value: number };
 	/** Ondas: col, fila y momento de nacimiento. */
 	uRipples: { value: THREE.Vector3[] };
 }
@@ -239,6 +244,9 @@ export function createLayerUniforms(): LayerUniforms {
 		},
 		uAgri: { value: bandsTexture(new Uint8Array([0]), 1, 1) },
 		uAgriOn: { value: 0 },
+		uCity: { value: bandsTexture(new Uint8Array([0]), 1, 1) },
+		uCityOn: { value: 0 },
+		uCityPulse: { value: 1 },
 	};
 }
 
@@ -302,7 +310,8 @@ uniform float uDateA, uDateB, uMix, uOpacity, uLimit, uLayerOn, uMode, uFieldLim
 uniform vec3 uNoData;
 uniform sampler2DArray uWater;
 uniform sampler2D uAgri;
-uniform float uWaterOn, uWaterA, uWaterB, uWaterMix, uTime, uAgriOn;
+uniform sampler2D uCity;
+uniform float uWaterOn, uWaterA, uWaterB, uWaterMix, uTime, uAgriOn, uCityOn, uCityPulse;
 uniform vec3 uRipples[${MAX_RIPPLES}];
 varying vec2 vGridUv;
 // oleaje: gradiente de cuatro ondas direccionales, en celdas
@@ -411,9 +420,38 @@ if (uWaterOn > 0.5 && !layerPainted) {
 }
 if (uAgriOn > 0.5 && waterAmount < 0.45) {
   float mark = texture(uAgri, vGridUv).r;
-  if (mark > 0.002) {
-    vec3 crop = mark > 0.006 ? vec3(0.996, 0.941, 0.541) : vec3(0.22, 0.72, 0.28);
-    diffuseColor.rgb = mix(diffuseColor.rgb, crop, 0.82);
+  if (mark > 0.006) {
+    float left = texture(uAgri, vGridUv - vec2(uTexel.x, 0.0)).r;
+    float right = texture(uAgri, vGridUv + vec2(uTexel.x, 0.0)).r;
+    float down = texture(uAgri, vGridUv - vec2(0.0, uTexel.y)).r;
+    float up = texture(uAgri, vGridUv + vec2(0.0, uTexel.y)).r;
+    float edge = step(0.006, mark) * (
+      step(left, 0.006) + step(right, 0.006) + step(down, 0.006) + step(up, 0.006)
+    );
+    vec3 soft = vec3(0.62, 0.9, 0.55);
+    vec3 strong = vec3(0.02, 0.45, 0.1);
+    vec3 fill = mix(soft, strong, uCityPulse);
+    float amount = 0.5 + 0.4 * uCityPulse;
+    if (edge > 0.5) {
+      fill = vec3(0.55, 1.0, 0.35);
+      amount = 0.75 + 0.25 * uCityPulse;
+    }
+    diffuseColor.rgb = mix(diffuseColor.rgb, fill, amount);
+  } else if (mark > 0.002) {
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.22, 0.72, 0.28), 0.82);
+  }
+}
+if (uCityOn > 0.5 && waterAmount < 0.45) {
+  float city = texture(uCity, vGridUv).r;
+  if (city > 0.5) {
+    float left = texture(uCity, vGridUv - vec2(uTexel.x, 0.0)).r;
+    float right = texture(uCity, vGridUv + vec2(uTexel.x, 0.0)).r;
+    float down = texture(uCity, vGridUv - vec2(0.0, uTexel.y)).r;
+    float up = texture(uCity, vGridUv + vec2(0.0, uTexel.y)).r;
+    float edge = step(left, 0.5) + step(right, 0.5) + step(down, 0.5) + step(up, 0.5);
+    vec3 glow = vec3(1.0, 0.72, 0.12);
+    float amount = edge > 0.5 ? 0.82 + 0.18 * uCityPulse : 0.5 + 0.4 * uCityPulse;
+    diffuseColor.rgb = mix(diffuseColor.rgb, glow, amount);
   }
 }`,
 			)
@@ -437,6 +475,6 @@ if (waterAmount > 0.001) {
 totalEmissiveRadiance += vec3(1.0, 0.95, 0.82) * waterGlint;`,
 			);
 	};
-	material.customProgramCacheKey = () => "terrain-layer-v10";
+	material.customProgramCacheKey = () => "terrain-layer-v13";
 	return material;
 }

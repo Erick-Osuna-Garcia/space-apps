@@ -27,7 +27,7 @@ const VIEW_HELP = {
 		title: "Zonas",
 		text: [
 			"Divide el terreno en zonas más bajas y más altas que al inicio, con su contorno. Reproduce el tiempo para ver cómo crecen.",
-			"Cada zona principal marca su punto extremo y su velocidad media. Toca una etiqueta para volar ahí.",
+			"Son zonas de movimiento del suelo, no las de Cultivos. Cada zona principal marca su punto extremo y su velocidad media. Toca una etiqueta para volar ahí.",
 			"«Más alta» significa que se acercó al satélite: también puede ser movimiento horizontal.",
 		],
 	},

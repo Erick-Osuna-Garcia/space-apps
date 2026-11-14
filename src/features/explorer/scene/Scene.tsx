@@ -100,6 +100,7 @@ export interface SceneProps {
 	/** Máscara de cultivo sobre el terreno. null la apaga. */
 	agriMask: Uint8Array | null;
 	mapModels: MapModel[];
+	cityMask: Uint8Array | null;
 	zoneLabels: React.RefObject<Map<string, HTMLElement>>;
 	deformScale: number;
 	deformCube: Float32Array | null;
@@ -160,6 +161,7 @@ export function Scene(props: SceneProps) {
 				water={props.water}
 				waterMotion={props.waterMotion}
 				agriMask={props.agriMask}
+				cityMask={props.cityMask}
 			/>
 			<PoiMarkers
 				pois={region.pois}

@@ -80,14 +80,20 @@ export function AgriculturePanel(props: AgriculturePanelProps) {
 							<button
 								type="button"
 								onClick={() => props.onSelect(zone.id)}
-								className={`min-w-0 flex-1 rounded-lg px-2 py-1 text-left text-xs ${
+								className={`min-w-0 flex-1 rounded-lg border px-2 py-1 text-left text-xs ${
 									props.selected?.id === zone.id
-										? "bg-amber-300/20 text-amber-100"
-										: "text-slate-200 hover:bg-white/10"
+										? "zone-selected border-emerald-400"
+										: "border-transparent text-slate-200 hover:bg-white/10"
 								}`}
 							>
 								Zona {zone.id + 1}
-								<span className="ml-2 tabular-nums text-slate-400">
+								<span
+									className={`ml-2 tabular-nums ${
+										props.selected?.id === zone.id
+											? "text-emerald-50"
+											: "text-slate-400"
+									}`}
+								>
 									{zone.areaKm2.toFixed(1)} km²
 								</span>
 							</button>
@@ -104,7 +110,10 @@ export function AgriculturePanel(props: AgriculturePanelProps) {
 			)}
 			{!props.missingCover && !props.loading && (
 				<p className="mt-2 shrink-0 px-1 text-[0.65rem] text-slate-400">
-					En el mapa, el verde es cultivo y el amarillo es la zona elegida.
+					En el mapa, el verde es cultivo. La zona elegida pasa de un verde
+					claro a uno fuerte y su borde parpadea. Las
+					plantas son variantes del valle (trigo, algodón, alfalfa, hortalizas y
+					frutales) y no identifican el cultivo de cada parcela.
 				</p>
 			)}
 			{props.rejected && (

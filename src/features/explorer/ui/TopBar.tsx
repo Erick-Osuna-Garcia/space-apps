@@ -18,6 +18,10 @@ interface TopBarProps {
 	onOpenEvents: () => void;
 	/** Solo el Valle de Mexicali ofrece la lectura agrícola. */
 	onOpenAgriculture?: () => void;
+	agricultureOpen?: boolean;
+	eventsOpen?: boolean;
+	contextOpen?: boolean;
+	creditsOpen?: boolean;
 	/** Aviso de origen de los datos, bajo el nombre de la región. */
 	notice?: React.ReactNode;
 }
@@ -30,6 +34,10 @@ export function TopBar({
 	onOpenSettings,
 	onOpenEvents,
 	onOpenAgriculture,
+	agricultureOpen = false,
+	eventsOpen = false,
+	contextOpen = false,
+	creditsOpen = false,
 	notice,
 }: TopBarProps) {
 	return (
@@ -52,20 +60,32 @@ export function TopBar({
 			</Panel>
 			<div className="pointer-events-auto flex gap-2">
 				{onOpenAgriculture && (
-					<HudButton onClick={onOpenAgriculture} label="Cultivos">
+					<HudButton
+						onClick={onOpenAgriculture}
+						label="Cultivos"
+						pressed={agricultureOpen}
+					>
 						<Sprout className="size-4" aria-hidden />
 					</HudButton>
 				)}
-				<HudButton onClick={onOpenEvents} label="Eventos">
+				<HudButton onClick={onOpenEvents} label="Eventos" pressed={eventsOpen}>
 					<ListChecks className="size-4" aria-hidden />
 				</HudButton>
 				<HudButton onClick={onOpenSettings} label="Ajustes">
 					<Settings className="size-4" aria-hidden />
 				</HudButton>
-				<HudButton onClick={onOpenContext} label="Contexto">
+				<HudButton
+					onClick={onOpenContext}
+					label="Contexto"
+					pressed={contextOpen}
+				>
 					<BookOpen className="size-4" aria-hidden />
 				</HudButton>
-				<HudButton onClick={onOpenCredits} label="Créditos">
+				<HudButton
+					onClick={onOpenCredits}
+					label="Créditos"
+					pressed={creditsOpen}
+				>
 					<Info className="size-4" aria-hidden />
 				</HudButton>
 			</div>
@@ -75,13 +95,19 @@ export function TopBar({
 
 function HudButton({
 	label,
+	pressed = false,
 	children,
 	...props
-}: React.ComponentProps<"button"> & { label: string }) {
+}: React.ComponentProps<"button"> & { label: string; pressed?: boolean }) {
 	return (
 		<button
 			type="button"
-			className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/75 px-3 text-sm font-semibold text-slate-100 shadow-lg backdrop-blur-md transition hover:border-cyan-300/50 hover:text-cyan-200 focus-visible:outline-2 focus-visible:outline-cyan-300"
+			aria-pressed={pressed}
+			className={`flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold shadow-lg backdrop-blur-md transition focus-visible:outline-2 focus-visible:outline-cyan-300 ${
+				pressed
+					? "border-cyan-300 bg-cyan-400/20 text-cyan-100"
+					: "border-white/10 bg-slate-950/75 text-slate-100 hover:border-cyan-300/50 hover:text-cyan-200"
+			}`}
 			{...props}
 		>
 			{children}

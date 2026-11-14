@@ -72,7 +72,7 @@ import {
 	nearestSegment,
 	toSegments,
 } from "./lib/infrastructure";
-import { placeMapModels } from "./lib/mapModels";
+import { placeMapModels, urbanCityMask } from "./lib/mapModels";
 import { fillForDisplay, robustLimit, velocityField } from "./lib/stats";
 import { waterDateIndex, waterMask } from "./lib/water";
 import type { Overlay, Poi, Region } from "./manifest";
@@ -575,6 +575,18 @@ function ExplorerScene() {
 		if (!agriOpen || !agriMap) return null;
 		return cropMask(agriMap.owner, state.agriZoneId);
 	}, [agriOpen, agriMap, state.agriZoneId]);
+	const cityMask = useMemo(() => {
+		if (region?.id !== "mexicali" || !landData.data) return null;
+		const city = region.pois.find((poi) => poi.id === "mexicali-centro");
+		if (!city) return null;
+		return urbanCityMask(
+			landData.data,
+			region.width,
+			region.height,
+			city.col,
+			city.row,
+		);
+	}, [region, landData.data]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: overlaySignature resume overlayData, que cambia de identidad en cada render
 	const mapModels = useMemo(() => {
 		if (region?.id !== "mexicali") return [];
@@ -846,6 +858,7 @@ function ExplorerScene() {
 								agriCells={selectedAgri?.cells ?? null}
 								agriMask={agriMask}
 								mapModels={mapModels}
+								cityMask={cityMask}
 								zoneLabels={zoneLabels}
 								deformScale={deformScale}
 								deformCube={deformCube}
@@ -925,6 +938,10 @@ function ExplorerScene() {
 						}
 						onOpenSettings={() => store.actions.setSettingsOpen(true)}
 						onOpenEvents={() => store.actions.setEventsOpen(!state.eventsOpen)}
+						eventsOpen={state.eventsOpen}
+						contextOpen={state.contextOpen}
+						creditsOpen={state.creditsOpen}
+						agricultureOpen={state.agricultureOpen}
 						onOpenAgriculture={
 							region.id === "mexicali"
 								? () => store.actions.setAgricultureOpen(!state.agricultureOpen)

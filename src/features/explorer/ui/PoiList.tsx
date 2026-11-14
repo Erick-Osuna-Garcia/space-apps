@@ -21,6 +21,9 @@ export function PoiList({
 	const items = manifest.regions.flatMap((region) =>
 		region.pois.map((poi) => ({ region, poi })),
 	);
+	const hasOtherRegion = manifest.regions.some(
+		(region) => region.id !== activeRegionId,
+	);
 
 	if (compact) {
 		return (
@@ -55,8 +58,9 @@ export function PoiList({
 				<PanelTitle>Destinos</PanelTitle>
 				<InfoHint label="Destinos">
 					<p>
-						Lugares para visitar. El pin amarillo vuela a un punto de esta
-						región; el cohete hace un salto (warp) a otra región.
+						{hasOtherRegion
+							? "Lugares para visitar. El pin amarillo vuela a un punto de esta región; el cohete hace un salto (warp) a otra región."
+							: "Lugares para visitar. Volar aquí lleva la nave a ese punto. Ciudad de Mexicali además marca en ámbar la zona urbana."}
 					</p>
 				</InfoHint>
 			</div>

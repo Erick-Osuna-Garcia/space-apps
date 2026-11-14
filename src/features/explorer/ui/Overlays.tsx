@@ -1,4 +1,5 @@
 import { ExternalLink, X } from "lucide-react";
+import { CROP_VARIANTS } from "../lib/mapModels";
 import type { Layer, Region } from "../manifest";
 import { InfoHint } from "./InfoHint";
 import { Panel, PanelTitle } from "./Panel";
@@ -121,10 +122,35 @@ export function ContextContent() {
 					y este-oeste, y los cambios bruscos. <strong>Superficie</strong>:
 					construcción, vegetación y cambios, con las polarizaciones HH y HV.{" "}
 					<strong>Agua</strong>: agua en superficie y humedad del suelo.{" "}
-					<strong>Impacto</strong>: pendiente, población, uso de suelo y, sobre
-					cualquier capa, caminos y canales. Toca un punto para ver qué dice
-					cada capa de ese lugar. Estas capas señalan patrones y exposición; no
-					evalúan daños ni riesgo.
+					<strong>Impacto</strong>: pendiente, población y uso de suelo. Sobre
+					cualquier capa van caminos, canales y, si el dato existe, ríos. El
+					botón Cultivos abre las zonas agrícolas sin cambiar la capa de
+					movimiento. Ciudad de Mexicali se sombrea en ámbar. Toca un punto
+					para ver qué dice cada capa de ese lugar. Estas capas señalan
+					patrones y exposición; no evalúan daños ni riesgo.
+				</p>
+			</section>
+			<section>
+				<h3>Modelos del mapa</h3>
+				<p>
+					Las plantas, las casas, los edificios y los autos son figuras sobre el
+					terreno. No son una medición del radar y no cambian los centímetros
+					de la sonda.
+				</p>
+				<p>
+					Las plantas aparecen al abrir Cultivos, sobre la clase Cultivos de
+					2021. Si el bloque es grande se sientan juntas, de una a cinco, y
+					todo el grupo es la misma variante. Un parche chico lleva una sola.
+					Las variantes ilustran lo que se cultiva en el Valle de Mexicali:{" "}
+					{CROP_VARIANTS.map((variant) => variant.label).join(", ")}. El mapa no
+					dice cuál de ellas está en cada parcela. Trigo y alfalfa ocupan más
+					grupos porque son los de mayor superficie en la región.
+				</p>
+				<p>
+					Las casas y los edificios salen de la clase Zona urbana, con el mismo
+					agrupado: de una a cinco donde el bloque es grande. Los autos van
+					sobre las vías principales y miran a lo largo del camino. No se ponen
+					en canales ni en ríos.
 				</p>
 			</section>
 			<section>
@@ -188,6 +214,24 @@ export function CreditsContent({
 					</li>
 				))}
 			</ul>
+			<section>
+				<p className="font-semibold text-white">Modelos del terreno</p>
+				<p className="text-xs text-slate-400">
+					Figuras ilustrativas, no un producto de satélite. El sitio de las
+					plantas y de las casas sale de ESA WorldCover 2021 (clases Cultivos y
+					Zona urbana). Los autos siguen las vías de OpenStreetMap. La lista de
+					cultivos es la del Valle de Mexicali publicada por la Secretaría de
+					Agricultura y Desarrollo Rural; no es un censo de cada parcela.
+				</p>
+				<a
+					href="https://www.gob.mx/agricultura"
+					target="_blank"
+					rel="noreferrer"
+					className="mt-0.5 inline-flex items-center gap-1 text-xs text-cyan-300 hover:text-cyan-200"
+				>
+					gob.mx <ExternalLink className="size-3" aria-hidden />
+				</a>
+			</section>
 			{layer && layer.products.length > 0 && (
 				<details>
 					<summary className="cursor-pointer text-xs font-semibold text-slate-200">
