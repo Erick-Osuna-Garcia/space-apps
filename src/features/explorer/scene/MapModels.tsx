@@ -1,3 +1,4 @@
+import { useFrame } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import {
@@ -6,6 +7,7 @@ import {
 	isCropKind,
 	type MapModel,
 } from "../lib/mapModels";
+import { useFlight } from "./flight";
 
 interface MapModelsProps {
 	models: MapModel[];
@@ -14,29 +16,73 @@ interface MapModelsProps {
 	focus: CropId | null;
 }
 
+const MAX_DRAWN = 480;
+const dummy = new THREE.Object3D();
+
 function usePlaced(
 	models: MapModel[],
 	heightAt: (col: number, row: number) => number,
 	gain: number,
 ) {
 	const ref = useRef<THREE.InstancedMesh>(null);
+	const flight = useFlight();
+	const last = useRef({
+		col: 1e9,
+		row: 1e9,
+		radius: 0,
+		gain: 0,
+		models,
+		heightAt,
+	});
 	useLayoutEffect(() => {
 		const mesh = ref.current;
 		if (!mesh) return;
 		mesh.raycast = () => {};
-		const dummy = new THREE.Object3D();
-		for (let i = 0; i < models.length; i++) {
+		mesh.count = 0;
+	}, []);
+	useFrame(({ camera, size }) => {
+		const mesh = ref.current;
+		if (!mesh || models.length === 0) return;
+		const zoom = (camera as THREE.OrthographicCamera).zoom;
+		const radius = Math.max(
+			18,
+			(Math.max(size.width, size.height) / zoom) * 0.55,
+		);
+		const col = flight.col;
+		const row = flight.row;
+		const prev = last.current;
+		if (
+			prev.models === models &&
+			prev.gain === gain &&
+			prev.heightAt === heightAt &&
+			prev.radius === radius &&
+			Math.abs(prev.col - col) < 1.5 &&
+			Math.abs(prev.row - row) < 1.5
+		) {
+			return;
+		}
+		last.current = { col, row, radius, gain, models, heightAt };
+		const stride = radius > 90 ? 4 : radius > 50 ? 2 : 1;
+		let n = 0;
+		for (let i = 0; i < models.length && n < MAX_DRAWN; i += stride) {
 			const model = models[i];
 			if (!model) continue;
+			if (
+				Math.abs(model.col - col) > radius ||
+				Math.abs(model.row - row) > radius
+			) {
+				continue;
+			}
 			dummy.position.set(model.col, heightAt(model.col, model.row), model.row);
 			dummy.rotation.set(0, model.yaw, 0);
 			dummy.scale.setScalar(model.scale * gain);
 			dummy.updateMatrix();
-			mesh.setMatrixAt(i, dummy.matrix);
+			mesh.setMatrixAt(n, dummy.matrix);
+			n += 1;
 		}
+		mesh.count = n;
 		mesh.instanceMatrix.needsUpdate = true;
-		mesh.computeBoundingSphere();
-	}, [models, heightAt, gain]);
+	});
 	return ref;
 }
 
@@ -56,10 +102,8 @@ function Part({
 	const ref = usePlaced(models, heightAt, gain);
 	const material = useMemo(
 		() =>
-			new THREE.MeshStandardMaterial({
+			new THREE.MeshLambertMaterial({
 				color,
-				roughness: 0.82,
-				metalness: 0.04,
 				flatShading: true,
 			}),
 		[color],
@@ -76,6 +120,8 @@ function Part({
 			ref={ref}
 			args={[geometry, material, models.length]}
 			frustumCulled={false}
+			castShadow={false}
+			receiveShadow={false}
 		/>
 	);
 }
@@ -138,7 +184,14 @@ const CROP_SHAPES: Record<CropId, Solid[]> = {
 		{ form: "cone", r: 0.08, h: 0.22, y: 1.32, color: "#84cc16" },
 	],
 	sorgo: [
-		{ form: "cylinder", rt: 0.05, rb: 0.08, h: 1.05, y: 0.52, color: "#854d0e" },
+		{
+			form: "cylinder",
+			rt: 0.05,
+			rb: 0.08,
+			h: 1.05,
+			y: 0.52,
+			color: "#854d0e",
+		},
 		{ form: "cone", r: 0.18, h: 0.42, y: 1.15, color: "#ca8a04" },
 	],
 	cebolla: [

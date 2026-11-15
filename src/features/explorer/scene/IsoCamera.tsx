@@ -39,6 +39,7 @@ export function IsoCamera({
 	const flight = useFlight();
 	const cam = useRef<THREE.OrthographicCamera>(null);
 	const target = useRef(new THREE.Vector3());
+	const goal = useRef(new THREE.Vector3());
 	const { size, gl } = useThree();
 	const limits = useRef({ min: 1, max: 10 });
 	const zoomGoal = useRef(1);
@@ -154,18 +155,20 @@ export function IsoCamera({
 		};
 	}, [gl, flight]);
 
-	useFrame((_, dt) => {
+	useFrame((state, dt) => {
 		const c = cam.current;
 		if (!c) return;
-		const goal = new THREE.Vector3(flight.col, flight.y, flight.row);
+		goal.current.set(flight.col, flight.y, flight.row);
 		if (reducedMotion || flight.snap) {
-			target.current.copy(goal);
+			target.current.copy(goal.current);
 			flight.snap = false;
-		} else target.current.lerp(goal, 1 - Math.exp(-5 * Math.min(dt, 0.1)));
+		} else
+			target.current.lerp(goal.current, 1 - Math.exp(-5 * Math.min(dt, 0.1)));
 		c.position.copy(target.current).add(OFFSET);
 		c.lookAt(target.current);
 		const dz = zoomGoal.current - c.zoom;
 		if (Math.abs(dz) > zoomGoal.current * 1e-4) {
+			state.performance.regress();
 			c.zoom = reducedMotion
 				? zoomGoal.current
 				: c.zoom + dz * (1 - Math.exp(-12 * Math.min(dt, 0.1)));

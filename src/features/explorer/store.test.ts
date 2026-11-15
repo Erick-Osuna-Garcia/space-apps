@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createExplorerStore, layerUi, overlayOn } from "./store";
+import {
+	createExplorerStore,
+	layerUi,
+	overlayOn,
+	viewFingerprint,
+} from "./store";
 
 describe("explorer store", () => {
 	it("cambiar de región reinicia la línea de tiempo y vuelve a reproducir", () => {
@@ -97,5 +102,15 @@ describe("explorer store", () => {
 			deform3d: true,
 			deformFactor: 2000,
 		});
+	});
+
+	it("la sonda no cambia la huella de vista ni reescribe el store si no se movió", () => {
+		const store = createExplorerStore();
+		const before = viewFingerprint(store.state);
+		store.actions.setProbe({ col: 1, row: 2, lon: 0, lat: 0, vx: 0, vz: 0 });
+		expect(viewFingerprint(store.state)).toBe(before);
+		const probe = store.state.probe;
+		store.actions.setProbe({ col: 1, row: 2, lon: 0, lat: 0, vx: 0, vz: 0 });
+		expect(store.state.probe).toBe(probe);
 	});
 });

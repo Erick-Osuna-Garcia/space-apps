@@ -128,6 +128,7 @@ export function Ship({ keys, reducedMotion }: ShipProps) {
 
 		const speed = Math.hypot(flight.vx, flight.vz);
 		if (speed > 0.5) {
+			state.performance.regress();
 			const desired = Math.atan2(-flight.vx, -flight.vz);
 			let diff = desired - flight.heading;
 			diff = Math.atan2(Math.sin(diff), Math.cos(diff));
@@ -219,11 +220,7 @@ function GroundLine() {
 	return (
 		<>
 			<primitive object={line} />
-			<mesh
-				ref={ring}
-				rotation={[-Math.PI / 2, 0, 0]}
-				renderOrder={11}
-			>
+			<mesh ref={ring} rotation={[-Math.PI / 2, 0, 0]} renderOrder={11}>
 				<ringGeometry args={[0.55, 0.9, 28]} />
 				<meshBasicMaterial
 					color="#facc15"

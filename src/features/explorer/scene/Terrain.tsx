@@ -269,7 +269,7 @@ export function Terrain({
 		const on = Boolean(
 			visible && (paintMode === PaintMode.CUBE ? hasCube : ready || hasCube),
 		);
-		uniforms.uLayerOn.value = on ? 1 : 0
+		uniforms.uLayerOn.value = on ? 1 : 0;
 		uniforms.uOpacity.value = opacity;
 		uniforms.uMode.value = ready ? paintMode : PaintMode.CUBE;
 		uniforms.uDeform.value = visible && hasCube && deformCube ? deformScale : 0;
@@ -318,7 +318,6 @@ export function Terrain({
 			<mesh
 				geometry={geo.surface}
 				material={material}
-				receiveShadow
 				// el hundimiento 3D desplaza vértices en el shader: el bounding sphere no lo sabe
 				frustumCulled={false}
 			/>

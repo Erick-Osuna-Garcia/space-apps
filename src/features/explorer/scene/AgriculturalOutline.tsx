@@ -7,6 +7,7 @@ interface AgriculturalOutlineProps {
 	width: number;
 	height: number;
 	heightAt: (col: number, row: number) => number;
+	reducedMotion: boolean;
 }
 
 /** Contorno de una sola zona, en las aristas que dan a una celda que no es suya. */
@@ -15,6 +16,7 @@ export function AgriculturalOutline({
 	width,
 	height,
 	heightAt,
+	reducedMotion,
 }: AgriculturalOutlineProps) {
 	const geometry = useMemo(() => {
 		const inside = new Uint8Array(width * height);
@@ -51,13 +53,12 @@ export function AgriculturalOutline({
 	}, [cells, width, height, heightAt]);
 	const material = useRef<THREE.LineBasicMaterial>(null);
 	useEffect(() => () => geometry.dispose(), [geometry]);
-	useFrame(() => {
+	useFrame((state) => {
 		const line = material.current;
 		if (!line) return;
-		const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-		line.opacity = reduce
+		line.opacity = reducedMotion
 			? 1
-			: 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(performance.now() * 0.004));
+			: 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(state.clock.elapsedTime * 4));
 	});
 	return (
 		<lineSegments

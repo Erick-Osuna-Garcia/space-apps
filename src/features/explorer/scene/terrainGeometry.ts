@@ -5,12 +5,22 @@ import type { Region } from "../manifest";
 export const DEFAULT_EXAGGERATION = 3;
 /** El mapa se ve este número de veces más grande que la nave. */
 export const MAP_SCALE = 3;
+/** Lado máximo de la malla en escritorio. El color de capa sigue en textura a resolución plena. */
+export const DESKTOP_TERRAIN_SPAN = 480;
+/** Lado máximo de la malla en móvil / táctil (riesgo del diseño: 256²). */
+export const MOBILE_TERRAIN_SPAN = 256;
 /** Altura de la nave sobre el relieve, en unidades de escena. */
 export const HOVER_HEIGHT = 48 / MAP_SCALE;
 
 /** Unidades de escena por metro de altura (1 unidad horizontal = 1 celda). */
 export const verticalScale = (region: Region, exaggeration: number) =>
 	exaggeration / region.cellSizeM;
+
+/** Cada cuántas celdas hay un vértice. La capa se pinta por textura, no hace falta 1:1. */
+export function terrainStep(width: number, height: number, compact: boolean) {
+	const span = compact ? MOBILE_TERRAIN_SPAN : DESKTOP_TERRAIN_SPAN;
+	return Math.max(1, Math.ceil(Math.max(width, height) / span));
+}
 
 /** Altura del relieve en unidades de escena, sin hundimiento 3D. */
 export function baseHeightFn(

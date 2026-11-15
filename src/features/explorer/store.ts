@@ -131,7 +131,7 @@ export function createExplorerStore(initial = initialExplorerState()) {
 			setState((s) => ({ ...s, playing }));
 		},
 		setProbe(probe: ProbeReading | null) {
-			setState((s) => ({ ...s, probe }));
+			setState((s) => (sameProbe(s.probe, probe) ? s : { ...s, probe }));
 		},
 		setMapView(mapView: MapView) {
 			setState((s) => ({ ...s, mapView }));
@@ -198,6 +198,38 @@ export const explorerStore = createExplorerStore();
 
 export const overlayOn = (state: ExplorerState, id: string) =>
 	state.overlays[id] !== false;
+
+const sameProbe = (a: ProbeReading | null, b: ProbeReading | null) => {
+	if (a === b) return true;
+	if (!a || !b) return false;
+	return (
+		a.col === b.col &&
+		a.row === b.row &&
+		a.lon === b.lon &&
+		a.lat === b.lat &&
+		a.vx === b.vx &&
+		a.vz === b.vz
+	);
+};
+
+/** Huella de UI sin la sonda: la nave publica el probe a 10 Hz y no debe remontar el mapa. */
+export function viewFingerprint(s: ExplorerState) {
+	return [
+		s.regionId,
+		s.dateIndex,
+		s.mapView,
+		s.deform3d ? 1 : 0,
+		s.deformFactor,
+		s.waterMotion ? 1 : 0,
+		s.agriZoneId ?? "",
+		s.agriCompare.join(","),
+		s.playing ? 1 : 0,
+		s.warping ? 1 : 0,
+		s.inspected ? `${s.inspected.col},${s.inspected.row}` : "",
+		JSON.stringify(s.layers),
+		JSON.stringify(s.overlays),
+	].join("|");
+}
 
 export function layerUi(state: ExplorerState, layerId: string): LayerUiState {
 	return state.layers[layerKey(state.regionId, layerId)] ?? DEFAULT_LAYER;

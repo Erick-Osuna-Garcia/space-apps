@@ -1,13 +1,13 @@
-import { Stars } from "@react-three/drei";
+import { AdaptiveDpr, Stars } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import type { KeyAxes } from "../controls/useKeyboard";
 import type { Palette } from "../lib/colormap";
+import type { Ejido } from "../lib/ejidos";
 import { gridToLonLat } from "../lib/grid";
 import type { Zone } from "../lib/impact";
-import type { Ejido } from "../lib/ejidos";
 import type { Feature } from "../lib/infrastructure";
-import type { MapModel, CropId } from "../lib/mapModels";
+import type { CropId, MapModel } from "../lib/mapModels";
 import type { Layer, Region } from "../manifest";
 import type { ExplorerStore } from "../store";
 import { AgriculturalOutline } from "./AgriculturalOutline";
@@ -30,14 +30,17 @@ const PROBE_INTERVAL_S = 0.1;
 function ProbePublisher({
 	region,
 	store,
+	enabled,
 }: {
 	region: Region;
 	store: ExplorerStore;
+	enabled: boolean;
 }) {
 	const flight = useFlight();
 	const acc = useRef(0);
 	const last = useRef({ col: -1, row: -1, moving: false });
 	useFrame((_, dt) => {
+		if (!enabled) return;
 		acc.current += dt;
 		if (acc.current < PROBE_INTERVAL_S) return;
 		acc.current = 0;
@@ -117,6 +120,7 @@ export interface SceneProps {
 	ejidos: Ejido[];
 	ejidoLabels: React.RefObject<Map<string, HTMLElement>>;
 	store: ExplorerStore;
+	publishProbe: boolean;
 }
 
 export function Scene(props: SceneProps) {
@@ -125,10 +129,11 @@ export function Scene(props: SceneProps) {
 	return (
 		<>
 			<color attach="background" args={["#05070f"]} />
+			<AdaptiveDpr pixelated />
 			<Stars
 				radius={600}
 				depth={200}
-				count={2500}
+				count={900}
 				factor={6}
 				fade
 				speed={props.reducedMotion ? 0 : 0.4}
@@ -210,6 +215,7 @@ export function Scene(props: SceneProps) {
 					width={region.width}
 					height={region.height}
 					heightAt={props.heightAt}
+					reducedMotion={props.reducedMotion}
 				/>
 			)}
 			<ZoneMarkers
@@ -223,7 +229,11 @@ export function Scene(props: SceneProps) {
 				focus={props.modelFocus}
 			/>
 			<Ship keys={props.keys} reducedMotion={props.reducedMotion} />
-			<ProbePublisher region={region} store={props.store} />
+			<ProbePublisher
+				region={region}
+				store={props.store}
+				enabled={props.publishProbe}
+			/>
 		</>
 	);
 }

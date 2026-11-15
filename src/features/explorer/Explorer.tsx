@@ -81,8 +81,18 @@ import type { Overlay, Poi, Region } from "./manifest";
 import { createFlight, FlightContext, teleport } from "./scene/flight";
 import { PaintMode } from "./scene/layerMaterial";
 import { Scene } from "./scene/Scene";
-import { baseHeightFn, DEFAULT_EXAGGERATION } from "./scene/terrainGeometry";
-import { explorerStore, layerUi, type MapView, overlayOn } from "./store";
+import {
+	baseHeightFn,
+	DEFAULT_EXAGGERATION,
+	terrainStep,
+} from "./scene/terrainGeometry";
+import {
+	explorerStore,
+	layerUi,
+	type MapView,
+	overlayOn,
+	viewFingerprint,
+} from "./store";
 import { DateTitle } from "./ui/DateTitle";
 import { EjidoLabels } from "./ui/EjidoLabels";
 import { EventsList } from "./ui/EventsList";
@@ -151,8 +161,69 @@ export function ExplorerLoading({
 	);
 }
 
+function LiveMeasurement({
+	region,
+	cube,
+	cubePending,
+	cubeFailed,
+	timelineLayer,
+	dispIndex,
+	terrain,
+	source,
+}: {
+	region: Region;
+	cube: Int16Array | undefined;
+	cubePending: boolean;
+	cubeFailed: boolean;
+	timelineLayer: ReturnType<typeof displacementLayer>;
+	dispIndex: number;
+	terrain: Int16Array | undefined;
+	source: ReturnType<typeof sourceAt>;
+}) {
+	const probe = useSelector(store, (s) => s.probe);
+	const deformFactor = useSelector(store, (s) => s.deformFactor);
+	const probeSeries =
+		timelineLayer && cube && probe
+			? readSeries(cube, region, timelineLayer, probe.col, probe.row)
+			: null;
+	const probeRate =
+		probeSeries && timelineLayer
+			? linearRate(probeSeries, timelineLayer.dates)
+			: null;
+	return (
+		<MeasurementMenu
+			record={measurementScience({
+				probe,
+				series: probeSeries,
+				dateIndex: dispIndex,
+				dates: timelineLayer?.dates ?? [],
+				rate: probeRate,
+				cellSizeM: region.cellSizeM,
+				groundM:
+					probe && terrain
+						? sampleBilinear(
+								terrain,
+								region.width,
+								region.height,
+								probe.col,
+								probe.row,
+							)
+						: null,
+				reliefExaggeration: exaggeration,
+				deformExaggeration: deformFactor,
+				loading: Boolean(timelineLayer) && cubePending,
+				failed: Boolean(timelineLayer) && cubeFailed,
+				source,
+				methodNote:
+					probeRate === null ? null : TREND_LABELS[trendLevel(probeRate)],
+			})}
+		/>
+	);
+}
+
 function ExplorerScene() {
-	const state = useSelector(store);
+	useSelector(store, viewFingerprint);
+	const state = store.state;
 	const reducedMotion = usePrefersReducedMotion();
 	const compact = useIsCompact();
 	const keys = useKeyboard();
@@ -294,6 +365,7 @@ function ExplorerScene() {
 			: 0;
 
 	// Cubo de geometría con huecos rellenados: solo se calcula si se activa el 3D.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: deform3d queda fijo en el store
 	const deformCube = useMemo(
 		() =>
 			state.deform3d && region && timelineLayer && activeCube
@@ -527,8 +599,10 @@ function ExplorerScene() {
 			crops: Boolean(landData.data),
 			settlements: Boolean(landData.data),
 			cars: roads.length > 0,
+			cropStride: compact ? 8 : 5,
+			urbanStride: compact ? 7 : 5,
 		});
-	}, [region, landData.data, overlayList, overlaySignature]);
+	}, [region, landData.data, overlayList, overlaySignature, compact]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: overlaySignature resume overlayData
 	const agriMask = useMemo(() => {
 		if (region?.id !== "mexicali" || !landData.data) return null;
@@ -694,44 +768,6 @@ function ExplorerScene() {
 	const [inspectLon, inspectLat] = inspected
 		? gridToLonLat(region, inspected.col, inspected.row)
 		: [0, 0];
-	const probeSeries =
-		timelineLayer && cube.data && state.probe
-			? readSeries(
-					cube.data,
-					region,
-					timelineLayer,
-					state.probe.col,
-					state.probe.row,
-				)
-			: null;
-	const probeRate =
-		probeSeries && timelineLayer
-			? linearRate(probeSeries, timelineLayer.dates)
-			: null;
-	const measurement = measurementScience({
-		probe: state.probe,
-		series: probeSeries,
-		dateIndex: dispIndex,
-		dates: timelineLayer?.dates ?? [],
-		rate: probeRate,
-		cellSizeM: region.cellSizeM,
-		groundM:
-			state.probe && terrain.data
-				? sampleBilinear(
-						terrain.data,
-						region.width,
-						region.height,
-						state.probe.col,
-						state.probe.row,
-					)
-				: null,
-		reliefExaggeration: exaggeration,
-		deformExaggeration: state.deformFactor,
-		loading: Boolean(timelineLayer) && cube.isPending,
-		failed: Boolean(timelineLayer) && cube.isError,
-		source: currentSource,
-		methodNote: probeRate === null ? null : TREND_LABELS[trendLevel(probeRate)],
-	});
 
 	const agriList = agriMap
 		? listedZones(agriMap.zones)
@@ -810,6 +846,26 @@ function ExplorerScene() {
 				waterways.some((way) => way.kind === "river"),
 			)
 		: [];
+	const sceneOverlays = overlayModels
+		.filter((overlay) => overlayOn(state, overlay.id))
+		.map((overlay) => ({
+			...overlay,
+			flags: paintWayFlags(
+				overlay.flags,
+				overlay.segments,
+				wayHit?.overlayId === overlay.id ? wayHit.feature : null,
+			),
+		}));
+	const onPick = (col: number, row: number) => {
+		setSelectedPoiId(null);
+		store.actions.setInspected({ col, row });
+		setScienceOpen("punto");
+		if (!agriMap || !landData.data) return;
+		const zone = zoneAt(agriMap, landData.data, region.width, col, row);
+		if (!zone) return;
+		setCompareRejected(false);
+		store.actions.setAgriZone(zone.id);
+	};
 	const goToEvent = (event: ImpactEvent) => {
 		const next = catalog.find((entry) => entry.view === eventView(event.type));
 		if (next) {
@@ -862,14 +918,19 @@ function ExplorerScene() {
 				<div className="absolute inset-0">
 					{sceneReady && terrain.data && (
 						<Canvas
-							dpr={[1, 1.5]}
-							gl={{ antialias: true, powerPreference: "high-performance" }}
+							dpr={compact ? 1 : [1, 1.5]}
+							performance={{ min: 0.5, max: 1, debounce: 200 }}
+							gl={{
+								antialias: !compact,
+								powerPreference: compact ? "low-power" : "high-performance",
+								stencil: false,
+							}}
 						>
 							<Scene
 								region={region}
 								heights={terrain.data}
 								exaggeration={exaggeration}
-								step={compact ? 2 : 1}
+								step={terrainStep(region.width, region.height, compact)}
 								layer={activeLayer}
 								cube={activeCube}
 								layerVisible={mainUi.visible}
@@ -888,32 +949,8 @@ function ExplorerScene() {
 								bands={rasterBands ?? zoneData?.bands ?? null}
 								bandPalette={raster ? bandPalette : BAND_COLORS}
 								contour={!raster}
-								onPick={(col, row) => {
-									setSelectedPoiId(null);
-									store.actions.setInspected({ col, row });
-									setScienceOpen("punto");
-									if (!agriMap || !landData.data) return;
-									const zone = zoneAt(
-										agriMap,
-										landData.data,
-										region.width,
-										col,
-										row,
-									);
-									if (!zone) return;
-									setCompareRejected(false);
-									store.actions.setAgriZone(zone.id);
-								}}
-								overlays={overlayModels
-									.filter((o) => overlayOn(state, o.id))
-									.map((o) => ({
-										...o,
-										flags: paintWayFlags(
-											o.flags,
-											o.segments,
-											wayHit?.overlayId === o.id ? wayHit.feature : null,
-										),
-									}))}
+								onPick={onPick}
+								overlays={sceneOverlays}
 								ejidos={ejidos.data ?? []}
 								ejidoLabels={ejidoLabels}
 								arrows={raster?.id === "east-west" ? rasterField : null}
@@ -932,6 +969,7 @@ function ExplorerScene() {
 								keys={keys}
 								labels={labels}
 								store={store}
+								publishProbe={scienceOpen === "medicion"}
 							/>
 						</Canvas>
 					)}
@@ -994,13 +1032,20 @@ function ExplorerScene() {
 								punto: inspected
 									? `${inspectLat.toFixed(4)}°, ${inspectLon.toFixed(4)}°`
 									: undefined,
-								medicion:
-									measurement.status === "ready"
-										? (measurement.displacement ?? undefined)
-										: undefined,
 							}}
 							panels={{
-								medicion: <MeasurementMenu record={measurement} />,
+								medicion: (
+									<LiveMeasurement
+										region={region}
+										cube={cube.data}
+										cubePending={cube.isPending}
+										cubeFailed={cube.isError}
+										timelineLayer={timelineLayer}
+										dispIndex={dispIndex}
+										terrain={terrain.data}
+										source={currentSource}
+									/>
+								),
 								capas: (
 									<LayersMenu
 										catalog={catalog}
