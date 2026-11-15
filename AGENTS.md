@@ -12,4 +12,4 @@ Before editing files for a substantial task:
 
 ## Explorer HUD
 
-The Mexicali explorer keeps crop models on whenever land cover is loaded, and keeps the green crop-soil overlay on the terrain. Subsidence 3D exaggeration stays at ×2000. Do not add floating tool menus (layers, models, context, events, credits, crops, destinations, inspector, settings). When the ship is parked, the nearest map model is shown only in the dedicated 3D view, not in a catalog panel.
+The Mexicali explorer keeps crop models on whenever land cover is loaded, and keeps the green crop-soil overlay on the terrain. Subsidence 3D exaggeration stays at ×2000. Scientific readings live in the disclosure bar (Medición, Capas, Punto, Cultivos, Eventos, Método, Procedencia, Escena). Do not add extra floating catalogs beside that bar. When the ship is parked, the nearest map model is shown only in the dedicated 3D view, not in a catalog panel.

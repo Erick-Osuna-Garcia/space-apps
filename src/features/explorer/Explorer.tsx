@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useKeyboard } from "./controls/useKeyboard";
 import {
 	ejidosQuery,
+	eventsQuery,
+	type ImpactEvent,
 	layerCubeQuery,
 	manifestQuery,
 	overlayQuery,
@@ -17,20 +19,43 @@ import {
 	useIsCompact,
 	usePrefersReducedMotion,
 } from "./hooks/useMedia";
-import { barrierMask, buildZones, cropMask } from "./lib/agriculture";
+import {
+	alignSeries,
+	barrierMask,
+	buildZones,
+	changeWord,
+	cropMask,
+	disturbanceWord,
+	listedZones,
+	moistureSeries,
+	nearestWaterway,
+	paintWayFlags,
+	vegetationWord,
+	waterBeside,
+	waterLines,
+	withComparison,
+	zoneAt,
+} from "./lib/agriculture";
 import {
 	buildCatalog,
+	type CatalogItem,
 	categoricalPlane,
 	classColors,
 	continuousPlane,
 	displacementLayer,
+	eventView,
 	nearestDateIndex,
 	resolveView,
 	SOURCE_NAMES,
 	sourceAt,
 } from "./lib/catalog";
-import { elapsedText } from "./lib/friendly";
-import { sampleBilinear } from "./lib/grid";
+import {
+	elapsedText,
+	nearestPoi,
+	TREND_LABELS,
+	trendLevel,
+} from "./lib/friendly";
+import { gridToLonLat, sampleBilinear } from "./lib/grid";
 import {
 	BAND_COLORS,
 	createImpactAnalysis,
@@ -38,8 +63,18 @@ import {
 	MIN_DATES_ACCELERATION,
 	zoneContext,
 } from "./lib/impact";
-import { affectedSegments, toSegments } from "./lib/infrastructure";
-import { placeMapModels, urbanCityMask } from "./lib/mapModels";
+import {
+	affectedSegments,
+	nearestSegment,
+	toSegments,
+} from "./lib/infrastructure";
+import { type CropId, placeMapModels, urbanCityMask } from "./lib/mapModels";
+import { linearRate, readSeries } from "./lib/probe";
+import {
+	agriZoneScience,
+	cellScience,
+	measurementScience,
+} from "./lib/science";
 import { fillForDisplay, robustLimit, velocityField } from "./lib/stats";
 import { waterDateIndex, waterMask } from "./lib/water";
 import type { Overlay, Poi, Region } from "./manifest";
@@ -50,10 +85,21 @@ import { baseHeightFn, DEFAULT_EXAGGERATION } from "./scene/terrainGeometry";
 import { explorerStore, layerUi, type MapView, overlayOn } from "./store";
 import { DateTitle } from "./ui/DateTitle";
 import { EjidoLabels } from "./ui/EjidoLabels";
-import { NoWebGL, WarpOverlay } from "./ui/Overlays";
-import { ParkedModelView } from "./ui/ParkedModelView";
+import { EventsList } from "./ui/EventsList";
+import { ControlsHint, DataNotice, NoWebGL, WarpOverlay } from "./ui/Overlays";
 import { PoiLabels } from "./ui/PoiLabels";
+import { ScienceMenuBar, type ScienceMenuId } from "./ui/ScienceMenuBar";
+import {
+	CropsMenu,
+	LayersMenu,
+	MeasurementMenu,
+	MethodMenu,
+	PointMenu,
+	ProvenanceMenu,
+	SceneMenu,
+} from "./ui/ScienceMenus";
 import { Timeline } from "./ui/Timeline";
+import { TopBar } from "./ui/TopBar";
 import { ZoneLabels } from "./ui/ZoneLabels";
 
 const fmtShortDate = (iso: string) =>
@@ -110,6 +156,9 @@ function ExplorerScene() {
 	const reducedMotion = usePrefersReducedMotion();
 	const compact = useIsCompact();
 	const keys = useKeyboard();
+	const [scienceOpen, setScienceOpen] = useState<ScienceMenuId | null>(null);
+	const [modelFocus, setModelFocus] = useState<CropId | null>(null);
+	const [compareRejected, setCompareRejected] = useState(false);
 	const labels = useRef(new Map<string, HTMLElement>());
 	const zoneLabels = useRef(new Map<string, HTMLElement>());
 	const ejidoLabels = useRef(new Map<string, HTMLElement>());
@@ -131,7 +180,7 @@ function ExplorerScene() {
 		() => (region ? buildCatalog(region, MIN_DATES_ACCELERATION) : []),
 		[region],
 	);
-	const item = resolveView(catalog, "cumulative");
+	const item = resolveView(catalog, state.mapView);
 	const raster = item?.layer ?? null;
 	const rasterData = useQuery(rasterQuery(region, raster));
 	const timelineDates = raster ? raster.dates : (timelineLayer?.dates ?? []);
@@ -342,6 +391,8 @@ function ExplorerScene() {
 			poi?.row ?? region.height / 2,
 		);
 		arrival.current = null;
+		setScienceOpen(null);
+		setModelFocus(null);
 		setReadyRegion(region.id);
 		if (store.state.warping) {
 			const id = window.setTimeout(
@@ -497,6 +548,77 @@ function ExplorerScene() {
 		return cropMask(map.owner, null);
 	}, [region, landData.data, overlayList, overlaySignature]);
 
+	const events = useQuery(eventsQuery(region));
+	const agriOpen = region?.id === "mexicali" && scienceOpen === "cultivos";
+	const findLayer = (id: string) =>
+		region?.layers.find((layer) => layer.id === id) ?? null;
+	const moistureLayer = findLayer("moisture");
+	const hvLayer = findLayer("hv");
+	const changeLayer = findLayer("change");
+	const disturbanceLayer = findLayer("disturbance");
+	const moistureQ = useQuery({
+		...rasterQuery(region, moistureLayer),
+		enabled: Boolean(agriOpen && moistureLayer),
+	});
+	const hvQ = useQuery({
+		...rasterQuery(region, hvLayer),
+		enabled: Boolean(agriOpen && hvLayer),
+	});
+	const changeQ = useQuery({
+		...rasterQuery(region, changeLayer),
+		enabled: Boolean(agriOpen && changeLayer),
+	});
+	const disturbanceQ = useQuery({
+		...rasterQuery(region, disturbanceLayer),
+		enabled: Boolean(agriOpen && disturbanceLayer),
+	});
+	// biome-ignore lint/correctness/useExhaustiveDependencies: overlaySignature resume overlayData
+	const waterways = useMemo(
+		() =>
+			overlayList.flatMap((overlay, index) => {
+				if (overlay.kind !== "canal" && overlay.kind !== "river") return [];
+				const features = overlayData[index]?.data ?? [];
+				return [
+					{
+						id: overlay.id,
+						kind: overlay.kind,
+						features,
+						segments: toSegments(features, region?.cellSizeM ?? 1),
+					},
+				];
+			}),
+		[overlaySignature, overlayList, region?.cellSizeM],
+	);
+	const agriMap = useMemo(() => {
+		if (region?.id !== "mexicali" || !landData.data) return null;
+		const barriers = barrierMask(
+			region.width,
+			region.height,
+			waterways.flatMap((way) => way.features),
+		);
+		return buildZones(
+			landData.data,
+			region.width,
+			region.height,
+			region.cellSizeM,
+			barriers,
+		);
+	}, [region, landData.data, waterways]);
+	const selectedAgri =
+		agriMap?.zones.find((zone) => zone.id === state.agriZoneId) ?? null;
+	useEffect(() => {
+		if (!selectedAgri) return;
+		flight.target = { col: selectedAgri.col, row: selectedAgri.row };
+	}, [selectedAgri, flight]);
+	const inspectQueries = useQueries({
+		queries: (region?.layers ?? [])
+			.filter((layer) => layer.type === "raster")
+			.map((layer) => ({
+				...rasterQuery(region, layer),
+				enabled: Boolean(state.inspected),
+			})),
+	});
+
 	if (manifest.isError) {
 		return (
 			<ExplorerLoading
@@ -509,6 +631,220 @@ function ExplorerScene() {
 
 	const shownLayer = raster ?? activeLayer;
 	const currentSource = shownLayer ? sourceAt(shownLayer, currentDate) : null;
+
+	const inspected = state.inspected;
+	const rasterLayers = region.layers.filter((layer) => layer.type === "raster");
+	const pointRows = inspected
+		? [
+				...(timelineLayer
+					? [
+							cellScience(
+								timelineLayer,
+								cube.data,
+								region,
+								inspected.col,
+								inspected.row,
+								currentDate,
+								{ loading: cube.isPending, failed: cube.isError },
+							),
+						]
+					: []),
+				...rasterLayers.map((layer, index) =>
+					cellScience(
+						layer,
+						inspectQueries[index]?.data,
+						region,
+						inspected.col,
+						inspected.row,
+						currentDate,
+						{
+							loading: Boolean(inspectQueries[index]?.isPending),
+							failed: Boolean(inspectQueries[index]?.isError),
+						},
+					),
+				),
+			]
+		: [];
+	if (inspected) {
+		for (const overlay of overlayModels) {
+			const segment = nearestSegment(
+				overlay.segments,
+				inspected.col,
+				inspected.row,
+			);
+			if (!segment) continue;
+			const feature = overlay.features[segment.feature];
+			pointRows.push({
+				name:
+					overlay.kind === "canal"
+						? "Canal"
+						: overlay.kind === "river"
+							? "Río"
+							: "Camino",
+				value: feature.name || feature.class,
+				units: "nombre",
+				sourceName: overlay.credits[0]?.name ?? "OpenStreetMap",
+				dateUsed: null,
+				missing: false,
+				loading: false,
+				failed: false,
+			});
+		}
+	}
+	const [inspectLon, inspectLat] = inspected
+		? gridToLonLat(region, inspected.col, inspected.row)
+		: [0, 0];
+	const probeSeries =
+		timelineLayer && cube.data && state.probe
+			? readSeries(
+					cube.data,
+					region,
+					timelineLayer,
+					state.probe.col,
+					state.probe.row,
+				)
+			: null;
+	const probeRate =
+		probeSeries && timelineLayer
+			? linearRate(probeSeries, timelineLayer.dates)
+			: null;
+	const measurement = measurementScience({
+		probe: state.probe,
+		series: probeSeries,
+		dateIndex: dispIndex,
+		dates: timelineLayer?.dates ?? [],
+		rate: probeRate,
+		cellSizeM: region.cellSizeM,
+		groundM:
+			state.probe && terrain.data
+				? sampleBilinear(
+						terrain.data,
+						region.width,
+						region.height,
+						state.probe.col,
+						state.probe.row,
+					)
+				: null,
+		reliefExaggeration: exaggeration,
+		deformExaggeration: state.deformFactor,
+		loading: Boolean(timelineLayer) && cube.isPending,
+		failed: Boolean(timelineLayer) && cube.isError,
+		source: currentSource,
+		methodNote: probeRate === null ? null : TREND_LABELS[trendLevel(probeRate)],
+	});
+
+	const agriList = agriMap
+		? listedZones(agriMap.zones)
+		: { listed: [], omitted: false };
+	const moistureIndex = moistureLayer
+		? Math.max(nearestDateIndex(moistureLayer.dates, currentDate), 0)
+		: 0;
+	const signalIndex = (dates: string[]) =>
+		Math.max(nearestDateIndex(dates, currentDate), 0);
+	const agriPlane = region.width * region.height;
+	const asInt16 = (data: Int16Array | Uint8Array | undefined) =>
+		data instanceof Int16Array ? data : null;
+	const asBytes = (data: Int16Array | Uint8Array | undefined) =>
+		data instanceof Uint8Array ? data : null;
+	const selectedSeries =
+		selectedAgri && moistureLayer
+			? moistureSeries(
+					selectedAgri.cells,
+					asInt16(moistureQ.data),
+					moistureLayer.dates.length,
+					agriPlane,
+					moistureLayer.scale,
+					moistureLayer.nodata,
+				)
+			: [];
+	const compareColumns = [selectedAgri?.id, ...state.agriCompare]
+		.filter((id): id is number => id !== undefined)
+		.flatMap((id) => {
+			const zone = agriMap?.zones[id];
+			if (!zone || !moistureLayer) return [];
+			return [
+				{
+					id,
+					areaKm2: zone.areaKm2,
+					values: moistureSeries(
+						zone.cells,
+						asInt16(moistureQ.data),
+						moistureLayer.dates.length,
+						agriPlane,
+						moistureLayer.scale,
+						moistureLayer.nodata,
+					),
+				},
+			];
+		});
+	const compared = alignSeries(
+		compareColumns.map((column) => ({
+			dates: moistureLayer?.dates ?? [],
+			values: column.values,
+		})),
+	);
+	const waterIndex = waterLayer
+		? Math.max(nearestDateIndex(waterLayer.dates, currentDate), 0)
+		: 0;
+	const waterTouch =
+		selectedAgri && waterData.data
+			? waterBeside(
+					selectedAgri.cells,
+					categoricalPlane(waterData.data, agriPlane, waterIndex),
+					region.width,
+					region.height,
+				)
+			: { permanent: false, fresh: false };
+	const wayHit = selectedAgri
+		? nearestWaterway(
+				selectedAgri.cells,
+				region.width,
+				region.cellSizeM,
+				waterways,
+			)
+		: null;
+	const agriWater = selectedAgri
+		? waterLines(
+				wayHit,
+				waterTouch,
+				waterways.some((way) => way.kind === "river"),
+			)
+		: [];
+	const goToEvent = (event: ImpactEvent) => {
+		const next = catalog.find((entry) => entry.view === eventView(event.type));
+		if (next) {
+			store.actions.setView(
+				next.view,
+				nearestDateIndex(
+					next.layer ? next.layer.dates : (timelineLayer?.dates ?? []),
+					event.dateEnd ?? event.date,
+				),
+			);
+		}
+		store.actions.setPlaying(false);
+		setSelectedPoiId(null);
+		flight.target = { col: event.col, row: event.row };
+	};
+	const selectItem = (next: CatalogItem) =>
+		store.actions.setView(
+			next.view,
+			nearestDateIndex(
+				next.layer ? next.layer.dates : (timelineLayer?.dates ?? []),
+				currentDate,
+			),
+		);
+	const scienceItems = [
+		{ id: "medicion" as const, label: "Medición" },
+		{ id: "capas" as const, label: "Capas" },
+		{ id: "punto" as const, label: "Punto" },
+		...(region.id === "mexicali"
+			? [{ id: "cultivos" as const, label: "Cultivos" }]
+			: []),
+		{ id: "eventos" as const, label: "Eventos" },
+		{ id: "metodo" as const, label: "Método" },
+		{ id: "procedencia" as const, label: "Procedencia" },
+		{ id: "escena" as const, label: "Escena" },
+	];
 
 	const sceneReady = terrain.data && readyRegion === region.id;
 	return (
@@ -552,21 +888,40 @@ function ExplorerScene() {
 								bands={rasterBands ?? zoneData?.bands ?? null}
 								bandPalette={raster ? bandPalette : BAND_COLORS}
 								contour={!raster}
-								onPick={() => {}}
+								onPick={(col, row) => {
+									setSelectedPoiId(null);
+									store.actions.setInspected({ col, row });
+									setScienceOpen("punto");
+									if (!agriMap || !landData.data) return;
+									const zone = zoneAt(
+										agriMap,
+										landData.data,
+										region.width,
+										col,
+										row,
+									);
+									if (!zone) return;
+									setCompareRejected(false);
+									store.actions.setAgriZone(zone.id);
+								}}
 								overlays={overlayModels
 									.filter((o) => overlayOn(state, o.id))
 									.map((o) => ({
 										...o,
-										flags: o.flags,
+										flags: paintWayFlags(
+											o.flags,
+											o.segments,
+											wayHit?.overlayId === o.id ? wayHit.feature : null,
+										),
 									}))}
 								ejidos={ejidos.data ?? []}
 								ejidoLabels={ejidoLabels}
 								arrows={raster?.id === "east-west" ? rasterField : null}
 								zones={zones}
-								agriCells={null}
+								agriCells={selectedAgri?.cells ?? null}
 								agriMask={agriMask}
 								mapModels={mapModels}
-								modelFocus={null}
+								modelFocus={modelFocus}
 								cityMask={cityMask}
 								cityLive={selectedPoiId === "mexicali-centro"}
 								zoneLabels={zoneLabels}
@@ -623,53 +978,218 @@ function ExplorerScene() {
 
 				<WarpOverlay active={state.warping} reducedMotion={reducedMotion} />
 
-				<div className="hud-safe pointer-events-none absolute inset-0 flex flex-col justify-end gap-2 sm:gap-3">
-					<div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-end">
-						<ParkedModelView
-							models={mapModels}
-							probe={state.probe}
-							reducedMotion={reducedMotion}
+				<div className="hud-safe pointer-events-none absolute inset-0 flex flex-col gap-2 sm:gap-3">
+					<div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+						<TopBar
+							compact={compact}
+							region={region}
+							exaggeration={exaggeration}
+							notice={<DataNotice source={currentSource} />}
 						/>
-						<div className="flex min-w-0 flex-1 flex-col items-center gap-2">
-							{dateCount > 0 && currentDate ? (
-								<div className="w-full max-w-2xl">
-									<DateTitle
-										date={fmtShortDate(currentDate)}
-										subtitle={[
-											elapsedText(timelineDates[0], currentDate),
-											currentSource && SOURCE_NAMES[currentSource],
-										]
-											.filter(Boolean)
-											.join(" · ")}
-										announce={!state.playing}
+						<ScienceMenuBar
+							items={scienceItems}
+							openId={scienceOpen}
+							onOpen={setScienceOpen}
+							headingExtra={{
+								punto: inspected
+									? `${inspectLat.toFixed(4)}°, ${inspectLon.toFixed(4)}°`
+									: undefined,
+								medicion:
+									measurement.status === "ready"
+										? (measurement.displacement ?? undefined)
+										: undefined,
+							}}
+							panels={{
+								medicion: <MeasurementMenu record={measurement} />,
+								capas: (
+									<LayersMenu
+										catalog={catalog}
+										active={item}
+										onSelect={selectItem}
+										displacement={timelineLayer}
+										visible={mainUi.visible}
+										loading={Boolean(raster) && rasterData.isPending}
+										failed={Boolean(raster) && rasterData.isError}
+										fieldLimit={fieldLimit}
+										zoneCount={zoneData?.zones.length ?? 0}
 									/>
-									<Timeline
-										dates={timelineDates}
-										index={Math.min(state.dateIndex, dateCount - 1)}
-										playing={state.playing}
-										onSelect={store.actions.selectDate}
-										onPlaying={store.actions.setPlaying}
-										onAdvance={advance}
-										ready={
-											raster ? Boolean(rasterData.data) : Boolean(activeCube)
+								),
+								punto: (
+									<PointMenu
+										inspected={Boolean(inspected)}
+										place={
+											inspected
+												? (nearestPoi(
+														region.pois,
+														inspected.col,
+														inspected.row,
+														region.cellSizeM,
+													)?.text ?? null)
+												: null
 										}
-										note={
-											activeLayer
-												? timelineNote(view, state.deform3d)
-												: undefined
+										coords={
+											inspected
+												? `${inspectLat.toFixed(4)}°, ${inspectLon.toFixed(4)}°`
+												: null
 										}
+										rows={pointRows}
 									/>
-								</div>
-							) : (
-								raster?.referenceDate && (
-									<DateTitle
-										date={raster.referenceDate.slice(0, 4)}
-										subtitle="Capa estática, sin línea de tiempo"
-										announce
+								),
+								cultivos: (
+									<CropsMenu
+										missingCover={!landLayer || landData.isError}
+										loading={!landData.data && landData.isPending}
+										listed={agriList.listed}
+										selected={selectedAgri}
+										rejected={compareRejected}
+										record={selectedAgri ? agriZoneScience(selectedAgri) : null}
+										moisture={selectedSeries[moistureIndex] ?? null}
+										dates={moistureLayer?.dates ?? []}
+										activeIndex={moistureIndex}
+										selectedSeries={selectedSeries}
+										columns={compareColumns.map((column, index) => ({
+											...column,
+											values: compared.columns[index] ?? column.values,
+										}))}
+										vegetation={
+											selectedAgri && hvLayer
+												? vegetationWord(
+														selectedAgri.cells,
+														asInt16(hvQ.data),
+														signalIndex(hvLayer.dates),
+														agriPlane,
+														hvLayer.scale,
+														hvLayer.nodata,
+													)
+												: null
+										}
+										change={
+											selectedAgri && changeLayer
+												? changeWord(
+														selectedAgri.cells,
+														asBytes(changeQ.data),
+														signalIndex(changeLayer.dates),
+														agriPlane,
+														changeLayer.nodata,
+													)
+												: null
+										}
+										disturbance={
+											selectedAgri && disturbanceLayer
+												? disturbanceWord(
+														selectedAgri.cells,
+														asBytes(disturbanceQ.data),
+														signalIndex(disturbanceLayer.dates),
+														agriPlane,
+														disturbanceLayer.nodata,
+													)
+												: null
+										}
+										water={agriWater}
+										onSelect={(id) => {
+											setCompareRejected(false);
+											setSelectedPoiId(null);
+											store.actions.setAgriZone(id);
+										}}
+										onCompare={(id) => {
+											if (state.agriZoneId === null) {
+												setCompareRejected(false);
+												store.actions.setAgriZone(id);
+												return;
+											}
+											const next = withComparison(
+												state.agriZoneId,
+												state.agriCompare,
+												id,
+											);
+											setCompareRejected(next.rejected);
+											if (!next.rejected)
+												store.actions.setAgriCompare(next.extras);
+										}}
+										onRemove={(id) => {
+											setCompareRejected(false);
+											store.actions.setAgriCompare(
+												state.agriCompare.filter((itemId) => itemId !== id),
+											);
+										}}
 									/>
-								)
-							)}
-						</div>
+								),
+								eventos: (
+									<EventsList events={events.data ?? []} onSelect={goToEvent} />
+								),
+								metodo: <MethodMenu />,
+								procedencia: (
+									<ProvenanceMenu
+										region={region}
+										layer={raster ?? activeLayer ?? timelineLayer}
+									/>
+								),
+								escena: (
+									<SceneMenu
+										layerVisible={mainUi.visible}
+										onLayerVisible={(visible) =>
+											store.actions.setLayerVisible(MAIN_LAYER, visible)
+										}
+										opacity={mainUi.opacity}
+										onOpacity={(value) =>
+											store.actions.setLayerOpacity(MAIN_LAYER, value)
+										}
+										overlays={overlayModels.map((overlay) => ({
+											id: overlay.id,
+											name: overlay.name,
+											on: overlayOn(state, overlay.id),
+											km: overlayBands ? overlay.km : null,
+										}))}
+										onOverlay={store.actions.setOverlay}
+										hasWater={Boolean(waterLayer)}
+										waterMotion={state.waterMotion}
+										onWaterMotion={store.actions.setWaterMotion}
+									/>
+								),
+							}}
+						/>
+					</div>
+
+					<div className="min-h-0 flex-1" />
+
+					<div className="flex min-w-0 flex-col items-center gap-2">
+						{dateCount > 0 && currentDate ? (
+							<div className="w-full max-w-2xl">
+								<DateTitle
+									date={fmtShortDate(currentDate)}
+									subtitle={[
+										elapsedText(timelineDates[0], currentDate),
+										currentSource && SOURCE_NAMES[currentSource],
+									]
+										.filter(Boolean)
+										.join(" · ")}
+									announce={!state.playing}
+								/>
+								<Timeline
+									dates={timelineDates}
+									index={Math.min(state.dateIndex, dateCount - 1)}
+									playing={state.playing}
+									onSelect={store.actions.selectDate}
+									onPlaying={store.actions.setPlaying}
+									onAdvance={advance}
+									ready={
+										raster ? Boolean(rasterData.data) : Boolean(activeCube)
+									}
+									note={
+										activeLayer ? timelineNote(view, state.deform3d) : undefined
+									}
+								/>
+							</div>
+						) : (
+							raster?.referenceDate && (
+								<DateTitle
+									date={raster.referenceDate.slice(0, 4)}
+									subtitle="Capa estática, sin línea de tiempo"
+									announce
+								/>
+							)
+						)}
+						<ControlsHint compact={compact} />
 					</div>
 				</div>
 			</div>

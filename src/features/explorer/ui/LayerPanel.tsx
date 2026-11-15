@@ -14,7 +14,7 @@ import type { Layer } from "../manifest";
 import { InfoHint } from "./InfoHint";
 import { Panel, PanelTitle } from "./Panel";
 
-const VIEW_HELP = {
+export const VIEW_HELP = {
 	cumulative: {
 		title: "Acumulado",
 		text: ["Cuánto se movió el suelo desde la primera fecha hasta la elegida."],

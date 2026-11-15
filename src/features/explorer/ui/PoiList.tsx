@@ -9,6 +9,7 @@ interface PoiListProps {
 	activeRegionId: string;
 	onSelect: (region: Region, poi: Poi) => void;
 	compact: boolean;
+	className?: string;
 }
 
 /** Destinos de todas las regiones; los de otra región se alcanzan con warp. */
@@ -17,6 +18,7 @@ export function PoiList({
 	activeRegionId,
 	onSelect,
 	compact,
+	className,
 }: PoiListProps) {
 	const items = manifest.regions.flatMap((region) =>
 		region.pois.map((poi) => ({ region, poi })),
@@ -53,7 +55,7 @@ export function PoiList({
 	}
 
 	return (
-		<Panel className="w-64 p-3">
+		<Panel className={cn("w-64 p-3", className)}>
 			<div className="flex items-center justify-between px-1">
 				<PanelTitle>Destinos</PanelTitle>
 				<InfoHint label="Destinos">

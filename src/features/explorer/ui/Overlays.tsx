@@ -79,101 +79,75 @@ export function SidePanel({
 	);
 }
 
+export const METHOD_SECTIONS: Array<{
+	id: string;
+	title: string;
+	body: string[];
+}> = [
+	{
+		id: "sar",
+		title: "Qué es SAR",
+		body: [
+			"Un radar de apertura sintética emite su propia energía en microondas y mide el eco. Por eso ve de día, de noche y a través de las nubes. NISAR (NASA–ISRO) usa banda L (λ ≈ 24 cm), que penetra la vegetación y conserva bien la señal en el desierto.",
+		],
+	},
+	{
+		id: "insar",
+		title: "Qué es InSAR",
+		body: [
+			"Al comparar la fase de dos pasadas del satélite sobre el mismo lugar se obtiene un interferograma: cada ciclo de fase equivale a unos 12 cm de cambio en la distancia suelo-satélite. Encadenando pares de 12 días se reconstruye cómo se movió el suelo, centímetro a centímetro.",
+		],
+	},
+	{
+		id: "mapa",
+		title: "Cómo leer el mapa",
+		body: [
+			"El color muestra el desplazamiento acumulado desde la primera fecha, en la línea de vista del radar. Los tonos café rojizo indican que el suelo se alejó del satélite, casi siempre por hundimiento. El gris marca zonas donde el radar perdió coherencia (agua, cultivos que cambian mucho) y no hay dato confiable. La altura del relieve está exagerada ×3 para que se lea en vista isométrica, y el hundimiento se exagera miles de veces para poder verlo: es ilustrativo. El dato real es el color y los centímetros de la sonda.",
+		],
+	},
+	{
+		id: "capas",
+		title: "Las capas del mapa",
+		body: [
+			"Movimiento: cuánto y cómo se mueve el suelo, incluidas las zonas, dónde se dobla el terreno, la separación vertical y este-oeste, y los cambios bruscos. Superficie: construcción, vegetación y cambios, con las polarizaciones HH y HV. Agua: agua en superficie y humedad del suelo. Impacto: pendiente, población y uso de suelo. Sobre cualquier capa van caminos, canales y, si el dato existe, ríos. El menú Cultivos abre las zonas agrícolas sin cambiar la capa de movimiento. Ciudad de Mexicali se sombrea en ámbar. Toca un punto para ver qué dice cada capa de ese lugar. Estas capas señalan patrones y exposición; no evalúan daños ni riesgo.",
+		],
+	},
+	{
+		id: "modelos",
+		title: "Modelos del mapa",
+		body: [
+			"Las plantas, las casas, los edificios y los autos son figuras sobre el terreno. No son una medición del radar y no cambian los centímetros de la sonda.",
+			`Las plantas se sientan sobre la clase Cultivos de 2021. Si el bloque es grande se agrupan de una a cinco, y todo el grupo es la misma variante. Un parche chico lleva una sola. Las variantes ilustran lo que se cultiva en el Valle de Mexicali: ${CROP_VARIANTS.map((variant) => variant.label).join(", ")}. El mapa no dice cuál de ellas está en cada parcela. Trigo y alfalfa ocupan más grupos porque son los de mayor superficie en la región.`,
+			"Las casas y los edificios salen de la clase Zona urbana, con el mismo agrupado. Los autos van sobre las vías principales y miran a lo largo del camino. No se ponen en canales ni en ríos.",
+		],
+	},
+	{
+		id: "cerro-prieto",
+		title: "Hipótesis: por qué se hunde Cerro Prieto",
+		body: [
+			"Cerro Prieto es uno de los campos geotérmicos más grandes del mundo. Desde los años 70 se extraen grandes volúmenes de agua y vapor del subsuelo para generar electricidad. Al bajar la presión en el yacimiento, los sedimentos se compactan y la superficie desciende varios centímetros al año, en un cuenco alargado sobre la zona de extracción. Las fallas activas del sistema Cerro Prieto–Imperial también influyen en la forma del cuenco.",
+		],
+	},
+	{
+		id: "limites",
+		title: "Lo que falta y lo que viene",
+		body: [
+			"Acumulado y Velocidad mezclan movimiento vertical y horizontal; las capas Vertical y Este-oeste los separan combinando dos órbitas. Con más años de NISAR se podrán seguir mejor tendencias y ciclos de temporada en el Valle de Mexicali.",
+		],
+	},
+];
+
 export function ContextContent() {
 	return (
 		<div className="space-y-4 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-bold [&_h3]:text-white">
-			<section>
-				<h3>¿Qué es SAR?</h3>
-				<p>
-					Un radar de apertura sintética emite su propia energía en microondas y
-					mide el eco. Por eso ve de día, de noche y a través de las nubes.
-					NISAR (NASA–ISRO) usa banda L (λ ≈ 24 cm), que penetra la vegetación y
-					conserva bien la señal en el desierto.
-				</p>
-			</section>
-			<section>
-				<h3>¿Qué es InSAR?</h3>
-				<p>
-					Al comparar la <em>fase</em> de dos pasadas del satélite sobre el
-					mismo lugar se obtiene un interferograma: cada ciclo de fase equivale
-					a ~12 cm de cambio en la distancia suelo-satélite. Encadenando pares
-					de 12 días se reconstruye cómo se movió el suelo, centímetro a
-					centímetro.
-				</p>
-			</section>
-			<section>
-				<h3>Cómo leer el mapa</h3>
-				<p>
-					El color muestra el desplazamiento acumulado desde la primera fecha,
-					en la línea de vista del radar (LOS). Los tonos café rojizo indican
-					que el suelo se alejó del satélite, casi siempre por hundimiento. El
-					gris marca zonas donde el radar perdió coherencia (agua, cultivos que
-					cambian mucho) y no hay dato confiable. La altura del relieve está
-					exagerada ×3 para que se lea en vista isométrica, y el hundimiento se
-					exagera miles de veces para poder verlo: es ilustrativo. El dato real
-					es el color y los centímetros de la sonda.
-				</p>
-			</section>
-			<section>
-				<h3>Las capas del mapa</h3>
-				<p>
-					<strong>Movimiento</strong>: cuánto y cómo se mueve el suelo,
-					incluidas las zonas, dónde se dobla el terreno, la separación vertical
-					y este-oeste, y los cambios bruscos. <strong>Superficie</strong>:
-					construcción, vegetación y cambios, con las polarizaciones HH y HV.{" "}
-					<strong>Agua</strong>: agua en superficie y humedad del suelo.{" "}
-					<strong>Impacto</strong>: pendiente, población y uso de suelo. Sobre
-					cualquier capa van caminos, canales y, si el dato existe, ríos. El
-					botón Cultivos abre las zonas agrícolas sin cambiar la capa de
-					movimiento. Ciudad de Mexicali se sombrea en ámbar. Toca un punto
-					para ver qué dice cada capa de ese lugar. Estas capas señalan
-					patrones y exposición; no evalúan daños ni riesgo.
-				</p>
-			</section>
-			<section>
-				<h3>Modelos del mapa</h3>
-				<p>
-					Las plantas, las casas, los edificios y los autos son figuras sobre el
-					terreno. No son una medición del radar y no cambian los centímetros
-					de la sonda.
-				</p>
-				<p>
-					Las plantas aparecen al abrir Cultivos, sobre la clase Cultivos de
-					2021. Si el bloque es grande se sientan juntas, de una a cinco, y
-					todo el grupo es la misma variante. Un parche chico lleva una sola.
-					Las variantes ilustran lo que se cultiva en el Valle de Mexicali:{" "}
-					{CROP_VARIANTS.map((variant) => variant.label).join(", ")}. El mapa no
-					dice cuál de ellas está en cada parcela. Trigo y alfalfa ocupan más
-					grupos porque son los de mayor superficie en la región.
-				</p>
-				<p>
-					Las casas y los edificios salen de la clase Zona urbana, con el mismo
-					agrupado: de una a cinco donde el bloque es grande. Los autos van
-					sobre las vías principales y miran a lo largo del camino. No se ponen
-					en canales ni en ríos.
-				</p>
-			</section>
-			<section>
-				<h3>Hipótesis: ¿por qué se hunde Cerro Prieto?</h3>
-				<p>
-					Cerro Prieto es uno de los campos geotérmicos más grandes del mundo.
-					Desde los años 70 se extraen grandes volúmenes de agua y vapor del
-					subsuelo para generar electricidad. Al bajar la presión en el
-					yacimiento, los sedimentos se compactan y la superficie desciende
-					varios centímetros al año, en un cuenco alargado sobre la zona de
-					extracción. Las fallas activas del sistema Cerro Prieto–Imperial
-					también influyen en la forma del cuenco.
-				</p>
-			</section>
-			<section>
-				<h3>Lo que falta y lo que viene</h3>
-				<p>
-					Acumulado y Velocidad mezclan movimiento vertical y horizontal; las
-					capas Vertical y Este-oeste los separan combinando dos órbitas. Con
-					más años de NISAR se podrán seguir mejor tendencias y ciclos de
-					temporada en el Valle de Mexicali.
-				</p>
-			</section>
+			{METHOD_SECTIONS.map((section) => (
+				<section key={section.id}>
+					<h3>{section.title}</h3>
+					{section.body.map((paragraph) => (
+						<p key={paragraph}>{paragraph}</p>
+					))}
+				</section>
+			))}
 		</div>
 	);
 }

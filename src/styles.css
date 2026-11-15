@@ -530,3 +530,32 @@ html.dark body {
 		box-shadow: 0 0 0 1px #4ade80;
 	}
 }
+
+.science-sheet {
+	opacity: 1;
+}
+@media (prefers-reduced-motion: no-preference) {
+	.science-sheet {
+		animation: science-sheet-in 150ms cubic-bezier(0.2, 0, 0, 1);
+	}
+}
+@keyframes science-sheet-in {
+	from {
+		opacity: 0;
+		transform: translateY(-6px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+.science-chevron {
+	transition-property: opacity;
+	transition-duration: 150ms;
+	transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+@media (prefers-reduced-motion: no-preference) {
+	.science-chevron {
+		transition-property: transform, opacity, filter;
+	}
+}
