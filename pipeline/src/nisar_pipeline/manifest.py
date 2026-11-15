@@ -85,7 +85,7 @@ class Layer(_Model):
 class Overlay(_Model):
     id: str
     name: str
-    kind: Literal["road", "canal", "river"]
+    kind: Literal["road", "canal", "river", "ejido"]
     path: str
     credits: list[Credit]
 

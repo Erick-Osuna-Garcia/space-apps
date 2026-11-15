@@ -28,6 +28,20 @@ describe("parseManifest", () => {
 		expect(warn.mock.calls[0][0]).toContain("backscatter-change");
 	});
 
+	it("acepta un overlay de ejido sin cambiar el esquema", () => {
+		const withEjido = structuredClone(fixture);
+		withEjido.regions[0].overlays.push({
+			id: "ejidos",
+			name: "Ejidos",
+			kind: "ejido",
+			path: "mexicali/ejidos.json",
+			credits: [],
+		});
+		const m = parseManifest(withEjido, () => {});
+		expect(m.schemaVersion).toBe(2);
+		expect(m.regions[0].overlays.at(-1)?.kind).toBe("ejido");
+	});
+
 	it("acepta un overlay de río sin cambiar el esquema", () => {
 		const withRiver = structuredClone(fixture);
 		withRiver.regions[0].overlays.push({

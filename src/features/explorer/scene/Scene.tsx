@@ -5,11 +5,14 @@ import type { KeyAxes } from "../controls/useKeyboard";
 import type { Palette } from "../lib/colormap";
 import { gridToLonLat } from "../lib/grid";
 import type { Zone } from "../lib/impact";
+import type { Ejido } from "../lib/ejidos";
 import type { Feature } from "../lib/infrastructure";
 import type { MapModel, CropId } from "../lib/mapModels";
 import type { Layer, Region } from "../manifest";
 import type { ExplorerStore } from "../store";
 import { AgriculturalOutline } from "./AgriculturalOutline";
+import { EjidoMarkers } from "./EjidoMarkers";
+import { EjidoOutlines } from "./EjidoOutlines";
 import { useFlight } from "./flight";
 import { Infrastructure } from "./Infrastructure";
 import { IsoCamera } from "./IsoCamera";
@@ -111,6 +114,8 @@ export interface SceneProps {
 	waterMotion: boolean;
 	keys: React.RefObject<KeyAxes>;
 	labels: React.RefObject<Map<string, HTMLElement>>;
+	ejidos: Ejido[];
+	ejidoLabels: React.RefObject<Map<string, HTMLElement>>;
 	store: ExplorerStore;
 }
 
@@ -182,6 +187,14 @@ export function Scene(props: SceneProps) {
 					terrain={uniforms}
 				/>
 			))}
+			{props.ejidos.length > 0 && (
+				<EjidoOutlines ejidos={props.ejidos} heightAt={props.heightAt} />
+			)}
+			<EjidoMarkers
+				ejidos={props.ejidos}
+				heightAt={props.heightAt}
+				labels={props.ejidoLabels}
+			/>
 			{props.arrows && (
 				<MotionArrows
 					field={props.arrows}

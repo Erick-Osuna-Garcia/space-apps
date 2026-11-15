@@ -7,6 +7,8 @@ from nisar_pipeline.config import load_config
 from nisar_pipeline.extras import (
     active_slopes,
     build_extras,
+    ejido_name,
+    ejidos_to_grid,
     osm_to_grid,
     overpass_query,
     remap_landcover,
@@ -89,12 +91,55 @@ def test_build_extras_with_fakes(tmp_path):
         fetch=lambda r, c: {"elements": []},
         landcover=lambda g: np.full(shape, 5, np.uint8),
         population=lambda g, c: np.full(shape, 7.4, np.float32),
+        ejidos=lambda r, c: {"type": "FeatureCollection", "features": []},
     )
     assert [e.layer.id for e in layers] == ["slope", "active-slopes", "landcover", "population"]
     assert all(e.data.shape == (1, *shape) for e in layers)
     assert layers[3].data.max() == 7
     assert [o.id for o in overlays] == ["roads", "canals", "rivers"]
     assert json.loads((tmp_path / "mexicali/roads.json").read_text()) == []
+
+
+def test_ejido_name_strips_prefix_and_title_cases():
+    assert ejido_name("EJIDO ZACATECAS") == "Zacatecas"
+    assert ejido_name("DR.ALBERTO OVIEDO MOTA NO.1\r\n") == "Dr. Alberto Oviedo Mota No. 1"
+
+
+def test_ejidos_to_grid_clips_and_labels_centroid():
+    west, south, east, north = -115.65, 32.20, -115.00, 32.75
+    collection = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {"nombre_nuc": "EJIDO ZACATECAS"},
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[
+                        [west + 0.05, south + 0.05],
+                        [west + 0.20, south + 0.05],
+                        [west + 0.20, south + 0.20],
+                        [west + 0.05, south + 0.20],
+                        [west + 0.05, south + 0.05],
+                    ]],
+                },
+            },
+            {
+                "type": "Feature",
+                "properties": {"nombre_nuc": "AFUERA"},
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[[-100.0, 20.0], [-99.9, 20.0], [-99.9, 20.1], [-100.0, 20.1], [-100.0, 20.0]]],
+                },
+            },
+        ],
+    }
+    out = ejidos_to_grid(collection, GRID)
+    assert len(out) == 1
+    assert out[0]["name"] == "Zacatecas"
+    assert len(out[0]["rings"][0]) >= 4
+    assert 0 < out[0]["col"] < GRID.width
+    assert 0 < out[0]["row"] < GRID.height
 
 
 def test_velocity_from_cube():

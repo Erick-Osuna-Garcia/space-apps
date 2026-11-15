@@ -15,7 +15,8 @@ import numpy as np
 import rasterio
 from rasterio.errors import RasterioIOError
 from rasterio.warp import Resampling, reproject
-from shapely.geometry import LineString
+from shapely.geometry import LineString, box, shape
+from shapely.ops import transform
 
 from . import manifest as mf
 from . import surface as S
@@ -52,6 +53,15 @@ OSM_CREDIT = mf.Credit(
     name="OpenStreetMap",
     attribution="© OpenStreetMap contributors (ODbL)",
     url="https://www.openstreetmap.org/copyright",
+)
+RAN_CREDIT = mf.Credit(
+    name="Registro Agrario Nacional",
+    attribution="Perimetrales de los núcleos agrarios certificados. RAN / SEMARNAT.",
+    url="https://www.ran.gob.mx/",
+)
+RAN_EJIDOS_URL = (
+    "https://geomaticasig1.semarnat.gob.mx/arcgis/rest/services/"
+    "Hosted/Perimetrales_de_los_n%C3%BAcleos_agrarios/FeatureServer/89/query"
 )
 
 # valor ESA -> (clase, nombre, color); 0 = sin dato y 1 = sin pintar, por convención del manifiesto
@@ -211,6 +221,86 @@ def osm_to_grid(data: dict, grid: Grid, tolerance: float = 0.4) -> dict[str, lis
     return out
 
 
+def ejido_name(raw: str) -> str:
+    name = " ".join(raw.replace("\r", " ").replace("\n", " ").split())
+    name = name.replace(".", ". ").replace("  ", " ")
+    if name.upper().startswith("EJIDO "):
+        name = name[6:].strip()
+    return " ".join(part.capitalize() for part in name.split())
+
+
+def fetch_ejidos(region: RegionConfig, cache_dir: Path) -> dict:
+    path = cache_dir / region.id / "ejidos.geojson"
+    if path.is_file():
+        return json.loads(path.read_text(encoding="utf-8"))
+    west, south, east, north = region.bbox
+    geom = json.dumps({
+        "xmin": west, "ymin": south, "xmax": east, "ymax": north,
+        "spatialReference": {"wkid": 4326},
+    })
+    params = {
+        "where": "tipo='Ejido'",
+        "geometry": geom,
+        "geometryType": "esriGeometryEnvelope",
+        "inSR": "4326",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "nombre_nuc,tipo,municipio",
+        "returnGeometry": "true",
+        "outSR": "4326",
+        "f": "geojson",
+        "resultRecordCount": "2000",
+    }
+    url = RAN_EJIDOS_URL + "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url, headers={"User-Agent": "nisar-explorer/0.1"})  # noqa: S310
+    with urllib.request.urlopen(req, timeout=180) as res:  # noqa: S310
+        data = json.load(res)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return data
+
+
+def ejidos_to_grid(collection: dict, grid: Grid, tolerance: float = 0.6) -> list[dict]:
+    """Perímetros de ejido en celdas, recortados a la grilla, con el nombre en el centroide."""
+    clip = box(0, 0, grid.width, grid.height)
+    out: list[dict] = []
+    for feat in collection.get("features") or []:
+        props = feat.get("properties") or {}
+        geom = feat.get("geometry")
+        name = ejido_name(str(props.get("nombre_nuc") or ""))
+        if not geom or not name:
+            continue
+        try:
+            poly = transform(lambda x, y, z=None: grid.lonlat_to_colrow(x, y), shape(geom))
+        except (TypeError, ValueError):
+            continue
+        if not poly.is_valid:
+            poly = poly.buffer(0)
+        clipped = poly.intersection(clip)
+        if clipped.is_empty:
+            continue
+        parts = [clipped] if clipped.geom_type == "Polygon" else list(getattr(clipped, "geoms", []))
+        rings: list[list[list[float]]] = []
+        for part in parts:
+            if part.geom_type != "Polygon" or part.area < 4:
+                continue
+            simple = part.simplify(tolerance)
+            coords = [[round(c, 2), round(r, 2)] for c, r in simple.exterior.coords]
+            if len(coords) >= 4:
+                rings.append(coords)
+        if not rings:
+            continue
+        center = clipped.centroid
+        out.append({
+            "name": name,
+            "class": "ejido",
+            "rings": rings,
+            "col": round(float(center.x), 3),
+            "row": round(float(center.y), 3),
+        })
+    out.sort(key=lambda item: item["name"])
+    return out
+
+
 def _continuous(
     region_id: str, layer_id: str, name: str, description: str, theme: str, units: str,
     cube: np.ndarray, scale: float, palette: str, dates: list[str], products: list[str],
@@ -321,6 +411,7 @@ def build_extras(
     fetch: Callable[[RegionConfig, Path], dict] = fetch_osm,
     landcover: Callable[[Grid], np.ndarray] = load_landcover,
     population: Callable[[Grid, Path], np.ndarray] = load_population,
+    ejidos: Callable[[RegionConfig, Path], dict] = fetch_ejidos,
 ) -> tuple[list[ExtraLayer], list[mf.Overlay]]:
     layers: list[ExtraLayer] = []
     overlays: list[mf.Overlay] = []
@@ -413,4 +504,15 @@ def build_extras(
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(json.dumps(features[kind], ensure_ascii=False), encoding="utf-8")
             overlays.append(mf.Overlay(id=oid, name=name, kind=kind, path=rel, credits=[OSM_CREDIT]))
+        try:
+            nuclei = ejidos_to_grid(ejidos(region, cfg.cache_dir), grid)
+        except Exception as exc:  # noqa: BLE001 - el mapa sigue sin los linderos
+            log.error("%s/ejidos: no se generó: %s", region.id, exc)
+            nuclei = []
+        if nuclei:
+            rel = f"{region.id}/ejidos.json"
+            (out_dir / rel).write_text(json.dumps(nuclei, ensure_ascii=False), encoding="utf-8")
+            overlays.append(mf.Overlay(
+                id="ejidos", name="Ejidos", kind="ejido", path=rel, credits=[RAN_CREDIT],
+            ))
     return layers, overlays

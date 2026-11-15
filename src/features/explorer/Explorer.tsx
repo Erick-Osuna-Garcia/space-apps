@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useKeyboard } from "./controls/useKeyboard";
 import {
+	ejidosQuery,
 	layerCubeQuery,
 	manifestQuery,
 	overlayQuery,
@@ -48,6 +49,7 @@ import { Scene } from "./scene/Scene";
 import { baseHeightFn, DEFAULT_EXAGGERATION } from "./scene/terrainGeometry";
 import { explorerStore, layerUi, type MapView, overlayOn } from "./store";
 import { DateTitle } from "./ui/DateTitle";
+import { EjidoLabels } from "./ui/EjidoLabels";
 import { NoWebGL, WarpOverlay } from "./ui/Overlays";
 import { ParkedModelView } from "./ui/ParkedModelView";
 import { PoiLabels } from "./ui/PoiLabels";
@@ -64,6 +66,7 @@ const fmtShortDate = (iso: string) =>
 
 const NO_COLORS: string[] = [];
 const NO_OVERLAYS: Overlay[] = [];
+const LINE_OVERLAYS = new Set(["road", "canal", "river"]);
 
 function timelineNote(view: MapView, deform3d: boolean) {
 	if (view !== "velocity" && view !== "acceleration") return undefined;
@@ -109,6 +112,7 @@ function ExplorerScene() {
 	const keys = useKeyboard();
 	const labels = useRef(new Map<string, HTMLElement>());
 	const zoneLabels = useRef(new Map<string, HTMLElement>());
+	const ejidoLabels = useRef(new Map<string, HTMLElement>());
 	const flight = useMemo(createFlight, []);
 
 	const manifest = useQuery(manifestQuery);
@@ -378,7 +382,13 @@ function ExplorerScene() {
 		[dateCount],
 	);
 	// Infraestructura: tramos resaltados según la fecha.
-	const overlayList = region?.overlays ?? NO_OVERLAYS;
+	const overlayList = (region?.overlays ?? NO_OVERLAYS).filter(
+		(overlay): overlay is Overlay & { kind: "road" | "canal" | "river" } =>
+			LINE_OVERLAYS.has(overlay.kind),
+	);
+	const ejidoOverlay =
+		region?.overlays.find((overlay) => overlay.kind === "ejido") ?? null;
+	const ejidos = useQuery(ejidosQuery(ejidoOverlay));
 	const overlayData = useQueries({
 		queries: overlayList.map((o) => ({
 			...overlayQuery(o),
@@ -549,6 +559,8 @@ function ExplorerScene() {
 										...o,
 										flags: o.flags,
 									}))}
+								ejidos={ejidos.data ?? []}
+								ejidoLabels={ejidoLabels}
 								arrows={raster?.id === "east-west" ? rasterField : null}
 								zones={zones}
 								agriCells={null}
@@ -574,6 +586,16 @@ function ExplorerScene() {
 							labels={labels}
 							selectedId={selectedPoiId}
 							onSelect={(poi) => goTo(region, poi)}
+						/>
+					)}
+					{sceneReady && (
+						<EjidoLabels
+							ejidos={ejidos.data ?? []}
+							labels={ejidoLabels}
+							onSelect={(ejido) => {
+								setSelectedPoiId(null);
+								flight.target = { col: ejido.col, row: ejido.row };
+							}}
 						/>
 					)}
 					{sceneReady && (

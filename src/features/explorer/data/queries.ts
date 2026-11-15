@@ -1,5 +1,6 @@
 import { queryOptions, skipToken } from "@tanstack/react-query";
 import { z } from "zod";
+import { EjidoSchema, type Ejido } from "../lib/ejidos";
 import type { Feature } from "../lib/infrastructure";
 import {
 	type Layer,
@@ -107,11 +108,26 @@ async function fetchOverlay(overlay: Overlay): Promise<Feature[]> {
 	return res.json();
 }
 
+async function fetchEjidos(overlay: Overlay): Promise<Ejido[]> {
+	const res = await fetch(`${DATA_BASE}/${overlay.path}`);
+	if (!res.ok) {
+		throw new Error(`No se pudo cargar ${overlay.path}: HTTP ${res.status}`);
+	}
+	return z.array(EjidoSchema).parse(await res.json());
+}
+
 /** Tramos de una superposición vectorial. */
 export const overlayQuery = (overlay: Overlay | null) =>
 	queryOptions({
 		queryKey: ["explorer", "overlay", overlay?.path],
 		queryFn: overlay ? () => fetchOverlay(overlay) : skipToken,
+		...immutable,
+	});
+
+export const ejidosQuery = (overlay: Overlay | null) =>
+	queryOptions({
+		queryKey: ["explorer", "ejidos", overlay?.path],
+		queryFn: overlay ? () => fetchEjidos(overlay) : skipToken,
 		...immutable,
 	});
 

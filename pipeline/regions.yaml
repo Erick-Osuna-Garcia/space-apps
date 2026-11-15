@@ -1,14 +1,14 @@
 # Regiones del explorador isométrico. Coordenadas WGS84: bbox = [minLon, minLat, maxLon, maxLat].
 output_dir: ../public/data
 cache_dir: .cache
-max_grid_size: 512        # celdas en el lado mayor de la grilla de cada región
-size_budget_mb: 100       # presupuesto de assets por región
+max_grid_size: 960        # celdas en el lado mayor; valle ~111 km → ~116 m/celda
+size_budget_mb: 160       # presupuesto de assets por región
 projection: EPSG:32611    # UTM 11N
 
 regions:
   - id: mexicali
-    name: Mexicali · Cerro Prieto
-    bbox: [-115.65, 32.20, -115.00, 32.75]
+    name: Valle de Mexicali
+    bbox: [-115.86, 31.98, -114.68, 32.76]
     date_range: ["2025-10-01", "2026-10-31"]
     extras: [slope, active-slopes, landcover, population, infrastructure, disturbance, decomposition, surface, moisture]
     surface_stack: {relative_orbit: 85, frame: 72}
@@ -23,6 +23,36 @@ regions:
         lon: -115.4523
         lat: 32.6245
         description: Capital de Baja California, en la frontera con Calexico.
+      - id: la-salada
+        name: La Salada
+        lon: -115.793
+        lat: 32.573
+        description: Campos al oeste de la Sierra Cucapá, fuera del distrito de riego del Colorado.
+      - id: guadalupe-victoria
+        name: Guadalupe Victoria
+        lon: -115.098
+        lat: 32.283
+        description: Cabecera del valle agrícola, en el eje de la carretera estatal 3.
+      - id: los-algodones
+        name: Los Algodones
+        lon: -114.732
+        lat: 32.716
+        description: Extremo noreste del valle, junto al río Colorado y la frontera con Andrade.
+      - id: ciudad-morelos
+        name: Ciudad Morelos
+        lon: -114.857
+        lat: 32.631
+        description: Cuervos. Poblado agrícola del este del valle, hacia Somerton.
+      - id: ciudad-coahuila
+        name: Ciudad Coahuila
+        lon: -115.003
+        lat: 32.196
+        description: Kilómetro 57, cabecera de Colonias Nuevas, en el sur del valle.
+      - id: el-indiviso
+        name: El Indiviso
+        lon: -114.98
+        lat: 32.02
+        description: Último ejido irrigado al sur, hacia el delta del Colorado.
     layers:
       - id: subsidence
         type: los-displacement
@@ -30,8 +60,8 @@ regions:
         coherence_threshold: 0.3
         # Zona estable de referencia (roca de la Sierra Cucapah). Verificar visualmente con la coherencia.
         reference_bbox: [-115.42, 32.30, -115.38, 32.34]
-        # 85/72 descendente: 26 pares, cubre 95 % de la región (5/18 solo cubre 53 %)
+        # 85/72 descendente: cubre el recuadro original; el valle ampliado puede quedar sin dato en los bordes.
         stack: {relative_orbit: 85, frame: 72}
-        # 106/18 ascendente: 22 pares, cubre 100 %; sirve para separar vertical y este-oeste
+        # 106/18 ascendente: sirve para separar vertical y este-oeste
         secondary_stack: {relative_orbit: 106, frame: 18}
         deramp_exclude_km: 14
