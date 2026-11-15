@@ -9,3 +9,7 @@ Before editing files for a substantial task:
 - Monorepos: when working across packages, run the skill check from the workspace root and prefer the local skill for the package being changed.
 - Multiple matches: prefer the most specific local skill for the package or concern you are changing; load additional skills only when the task spans multiple packages or concerns.
 <!-- intent-skills:end -->
+
+## Explorer HUD
+
+The Mexicali explorer keeps crop models on whenever land cover is loaded, and keeps the green crop-soil overlay on the terrain. Subsidence 3D exaggeration stays at ×2000. Do not add floating tool menus (layers, models, context, events, credits, crops, destinations, inspector, settings). When the ship is parked, the nearest map model is shown only in the dedicated 3D view, not in a catalog panel.

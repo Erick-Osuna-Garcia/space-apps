@@ -5,8 +5,6 @@ import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useKeyboard } from "./controls/useKeyboard";
 import {
-	eventsQuery,
-	type ImpactEvent,
 	layerCubeQuery,
 	manifestQuery,
 	overlayQuery,
@@ -18,61 +16,29 @@ import {
 	useIsCompact,
 	usePrefersReducedMotion,
 } from "./hooks/useMedia";
-import {
-	alignSeries,
-	barrierMask,
-	buildZones,
-	changeWord,
-	cropMask,
-	disturbanceWord,
-	listedZones,
-	moistureSeries,
-	nearestWaterway,
-	paintWayFlags,
-	vegetationWord,
-	waterBeside,
-	waterLines,
-	withComparison,
-	zoneAt,
-} from "./lib/agriculture";
+import { barrierMask, buildZones, cropMask } from "./lib/agriculture";
 import {
 	buildCatalog,
-	type CatalogItem,
 	categoricalPlane,
 	classColors,
 	continuousPlane,
 	displacementLayer,
-	eventView,
-	NO_READING,
 	nearestDateIndex,
-	readLayer,
 	resolveView,
 	SOURCE_NAMES,
 	sourceAt,
 } from "./lib/catalog";
+import { elapsedText } from "./lib/friendly";
+import { sampleBilinear } from "./lib/grid";
 import {
-	elapsedText,
-	nearestPoi,
-	TREND_LABELS,
-	trendLevel,
-} from "./lib/friendly";
-import { cellIndex, gridToLonLat, sampleBilinear } from "./lib/grid";
-import {
-	accelerationReading,
 	BAND_COLORS,
 	createImpactAnalysis,
-	differentialReading,
 	MAX_LABELED_ZONES,
 	MIN_DATES_ACCELERATION,
 	zoneContext,
-	zoneReading,
 } from "./lib/impact";
-import {
-	affectedSegments,
-	nearestSegment,
-	toSegments,
-} from "./lib/infrastructure";
-import { isCropKind, placeMapModels, urbanCityMask, type CropId, type MapModel } from "./lib/mapModels";
+import { affectedSegments, toSegments } from "./lib/infrastructure";
+import { placeMapModels, urbanCityMask } from "./lib/mapModels";
 import { fillForDisplay, robustLimit, velocityField } from "./lib/stats";
 import { waterDateIndex, waterMask } from "./lib/water";
 import type { Overlay, Poi, Region } from "./manifest";
@@ -81,28 +47,11 @@ import { PaintMode } from "./scene/layerMaterial";
 import { Scene } from "./scene/Scene";
 import { baseHeightFn, DEFAULT_EXAGGERATION } from "./scene/terrainGeometry";
 import { explorerStore, layerUi, type MapView, overlayOn } from "./store";
-import { AgriculturePanel } from "./ui/AgriculturePanel";
 import { DateTitle } from "./ui/DateTitle";
-import { EventsList } from "./ui/EventsList";
-import { Inspector, type InspectorRow } from "./ui/Inspector";
-import { LayerPanel } from "./ui/LayerPanel";
-import { MobileDock, type DockItem } from "./ui/MobileDock";
-import { ModelsPanel } from "./ui/ModelsPanel";
-import {
-	ContextContent,
-	ControlsHint,
-	CreditsContent,
-	DataNotice,
-	NoWebGL,
-	SidePanel,
-	WarpOverlay,
-} from "./ui/Overlays";
+import { NoWebGL, WarpOverlay } from "./ui/Overlays";
+import { ParkedModelView } from "./ui/ParkedModelView";
 import { PoiLabels } from "./ui/PoiLabels";
-import { PoiList } from "./ui/PoiList";
-import { SettingsDialog } from "./ui/SettingsDialog";
-import { ShipStatus } from "./ui/ShipStatus";
 import { Timeline } from "./ui/Timeline";
-import { TopBar } from "./ui/TopBar";
 import { ZoneLabels } from "./ui/ZoneLabels";
 
 const fmtShortDate = (iso: string) =>
@@ -133,27 +82,6 @@ const MAIN_LAYER = "main";
 const exaggeration = DEFAULT_EXAGGERATION;
 const store = explorerStore;
 
-function nearestModel(
-	models: MapModel[],
-	kind: CropId,
-	probe: { col: number; row: number } | null,
-) {
-	const hits = models.filter((model) => model.kind === kind);
-	const first = hits[0];
-	if (!first) return null;
-	if (!probe) return hits[Math.floor(hits.length / 2)] ?? first;
-	let best = first;
-	let bestD = Number.POSITIVE_INFINITY;
-	for (const model of hits) {
-		const d = (model.col - probe.col) ** 2 + (model.row - probe.row) ** 2;
-		if (d < bestD) {
-			bestD = d;
-			best = model;
-		}
-	}
-	return best;
-}
-
 export function Explorer() {
 	const [webgl] = useState(hasWebGL2);
 	if (!webgl) return <NoWebGL />;
@@ -182,11 +110,6 @@ function ExplorerScene() {
 	const labels = useRef(new Map<string, HTMLElement>());
 	const zoneLabels = useRef(new Map<string, HTMLElement>());
 	const flight = useMemo(createFlight, []);
-	const [layersOpen, setLayersOpen] = useState(false);
-	const [modelsOpen, setModelsOpen] = useState(false);
-	const [modelFocus, setModelFocus] = useState<CropId | null>(null);
-	const pendingFly = useRef<CropId | null>(null);
-	const [compareRejected, setCompareRejected] = useState(false);
 
 	const manifest = useQuery(manifestQuery);
 	const region =
@@ -204,7 +127,7 @@ function ExplorerScene() {
 		() => (region ? buildCatalog(region, MIN_DATES_ACCELERATION) : []),
 		[region],
 	);
-	const item = resolveView(catalog, state.mapView);
+	const item = resolveView(catalog, "cumulative");
 	const raster = item?.layer ?? null;
 	const rasterData = useQuery(rasterQuery(region, raster));
 	const timelineDates = raster ? raster.dates : (timelineLayer?.dates ?? []);
@@ -454,31 +377,6 @@ function ExplorerScene() {
 		() => store.actions.advanceDate(dateCount),
 		[dateCount],
 	);
-	const events = useQuery(eventsQuery(region));
-	const goToEvent = (event: ImpactEvent) => {
-		const next = catalog.find((c) => c.view === eventView(event.type));
-		if (next) {
-			store.actions.setView(
-				next.view,
-				nearestDateIndex(
-					next.layer ? next.layer.dates : (timelineLayer?.dates ?? []),
-					event.dateEnd ?? event.date,
-				),
-			);
-		}
-		store.actions.setPlaying(false);
-		setSelectedPoiId(null);
-		flight.target = { col: event.col, row: event.row };
-	};
-	const selectItem = (next: CatalogItem) =>
-		store.actions.setView(
-			next.view,
-			nearestDateIndex(
-				next.layer ? next.layer.dates : (timelineLayer?.dates ?? []),
-				currentDate,
-			),
-		);
-
 	// Infraestructura: tramos resaltados según la fecha.
 	const overlayList = region?.overlays ?? NO_OVERLAYS;
 	const overlayData = useQueries({
@@ -542,68 +440,6 @@ function ExplorerScene() {
 		[landLayer],
 	);
 
-	const agriOpen = region?.id === "mexicali" && state.agricultureOpen;
-	const findLayer = (id: string) =>
-		region?.layers.find((l) => l.id === id) ?? null;
-	const moistureLayer = findLayer("moisture");
-	const hvLayer = findLayer("hv");
-	const changeLayer = findLayer("change");
-	const disturbanceLayer = findLayer("disturbance");
-	const moistureQ = useQuery({
-		...rasterQuery(region, moistureLayer),
-		enabled: Boolean(agriOpen && moistureLayer),
-	});
-	const hvQ = useQuery({
-		...rasterQuery(region, hvLayer),
-		enabled: Boolean(agriOpen && hvLayer),
-	});
-	const changeQ = useQuery({
-		...rasterQuery(region, changeLayer),
-		enabled: Boolean(agriOpen && changeLayer),
-	});
-	const disturbanceQ = useQuery({
-		...rasterQuery(region, disturbanceLayer),
-		enabled: Boolean(agriOpen && disturbanceLayer),
-	});
-	// biome-ignore lint/correctness/useExhaustiveDependencies: overlaySignature resume overlayData
-	const waterways = useMemo(
-		() =>
-			overlayList.flatMap((overlay, index) => {
-				if (overlay.kind !== "canal" && overlay.kind !== "river") return [];
-				const features = overlayData[index]?.data ?? [];
-				return [
-					{
-						id: overlay.id,
-						kind: overlay.kind,
-						features,
-						segments: toSegments(features, region?.cellSizeM ?? 1),
-					},
-				];
-			}),
-		// overlaySignature resume overlayData, que cambia de identidad en cada render
-		[overlaySignature, overlayList, region?.cellSizeM],
-	);
-	const agriMap = useMemo(() => {
-		if (region?.id !== "mexicali" || !landData.data) return null;
-		const barriers = barrierMask(
-			region.width,
-			region.height,
-			waterways.flatMap((way) => way.features),
-		);
-		return buildZones(
-			landData.data,
-			region.width,
-			region.height,
-			region.cellSizeM,
-			barriers,
-		);
-	}, [region, landData.data, waterways]);
-	const selectedAgri =
-		agriMap?.zones.find((zone) => zone.id === state.agriZoneId) ?? null;
-	const agriMask = useMemo(() => {
-		if (!agriOpen || !agriMap) return null;
-		return cropMask(agriMap.owner, state.agriZoneId);
-	}, [agriOpen, agriMap, state.agriZoneId]);
 	const cityMask = useMemo(() => {
 		if (region?.id !== "mexicali" || !landData.data) return null;
 		const city = region.pois.find((poi) => poi.id === "mexicali-centro");
@@ -627,60 +463,29 @@ function ExplorerScene() {
 			width: region.width,
 			height: region.height,
 			roads,
-			crops: agriOpen,
+			crops: Boolean(landData.data),
 			settlements: Boolean(landData.data),
 			cars: roads.length > 0,
 		});
-	}, [region, landData.data, overlayList, overlaySignature, agriOpen]);
-	useEffect(() => {
-		const id = pendingFly.current;
-		if (!id) return;
-		const hit = nearestModel(mapModels, id, state.probe);
-		if (!hit) return;
-		pendingFly.current = null;
-		flight.target = { col: hit.col, row: hit.row };
-	}, [mapModels, state.probe, flight]);
-	const modelCounts = useMemo(() => {
-		const counts: Partial<Record<CropId, number>> = {};
-		for (const model of mapModels) {
-			if (!isCropKind(model.kind)) continue;
-			counts[model.kind] = (counts[model.kind] ?? 0) + 1;
-		}
-		return counts;
-	}, [mapModels]);
-	useEffect(() => {
-		if (!selectedAgri) return;
-		flight.target = { col: selectedAgri.col, row: selectedAgri.row };
-	}, [selectedAgri, flight]);
-	const wayHit = useMemo(() => {
-		if (!selectedAgri || !region) return null;
-		return nearestWaterway(
-			selectedAgri.cells,
-			region.width,
-			region.cellSizeM,
-			waterways,
+	}, [region, landData.data, overlayList, overlaySignature]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: overlaySignature resume overlayData
+	const agriMask = useMemo(() => {
+		if (region?.id !== "mexicali" || !landData.data) return null;
+		const waterways = overlayList.flatMap((overlay, index) =>
+			overlay.kind === "canal" || overlay.kind === "river"
+				? (overlayData[index]?.data ?? [])
+				: [],
 		);
-	}, [selectedAgri, region, waterways]);
-	const moistureIndex = moistureLayer
-		? Math.max(nearestDateIndex(moistureLayer.dates, currentDate), 0)
-		: 0;
-	const signalIndex = (dates: string[]) =>
-		Math.max(nearestDateIndex(dates, currentDate), 0);
-	const agriPlane = region ? region.width * region.height : 0;
-	const asInt16 = (data: Int16Array | Uint8Array | undefined) =>
-		data instanceof Int16Array ? data : null;
-	const asBytes = (data: Int16Array | Uint8Array | undefined) =>
-		data instanceof Uint8Array ? data : null;
-
-	// El inspector lee todas las capas de la región al tocar un punto.
-	const inspectQueries = useQueries({
-		queries: (region?.layers ?? [])
-			.filter((l) => l.type === "raster")
-			.map((l) => ({
-				...rasterQuery(region, l),
-				enabled: Boolean(state.inspected),
-			})),
-	});
+		const barriers = barrierMask(region.width, region.height, waterways);
+		const map = buildZones(
+			landData.data,
+			region.width,
+			region.height,
+			region.cellSizeM,
+			barriers,
+		);
+		return cropMask(map.owner, null);
+	}, [region, landData.data, overlayList, overlaySignature]);
 
 	if (manifest.isError) {
 		return (
@@ -692,264 +497,10 @@ function ExplorerScene() {
 	if (!manifest.data || !region)
 		return <ExplorerLoading label="Cargando datos de NISAR…" />;
 
-	const probeCell = state.probe
-		? cellIndex(region.width, region.height, state.probe.col, state.probe.row)
-		: -1;
-	const reading =
-		probeCell < 0
-			? null
-			: raster
-				? rasterData.data && state.probe
-					? `${raster.name}: ${readLayer(raster, rasterData.data, region, state.probe.col, state.probe.row, currentDate)}`
-					: null
-				: zoneData
-					? zoneReading(zoneData.bands[probeCell])
-					: view === "differential" && field
-						? differentialReading(field[probeCell])
-						: view === "acceleration" && field
-							? accelerationReading(field[probeCell])
-							: null;
-
-	const inspected = state.inspected;
-	const inspectorRows: InspectorRow[] = [];
-	if (inspected) {
-		if (timelineLayer && cube.data) {
-			inspectorRows.push({
-				name: "Desplazamiento",
-				value: readLayer(
-					timelineLayer,
-					cube.data,
-					region,
-					inspected.col,
-					inspected.row,
-					currentDate,
-				),
-			});
-			const v =
-				velocity?.[
-					cellIndex(region.width, region.height, inspected.col, inspected.row)
-				] ?? Number.NaN;
-			inspectorRows.push({
-				name: "Tendencia",
-				value: Number.isFinite(v)
-					? `${v.toFixed(1)} cm/año · ${TREND_LABELS[trendLevel(v)]}`
-					: NO_READING,
-			});
-		}
-		for (const o of overlayModels) {
-			const seg = nearestSegment(o.segments, inspected.col, inspected.row);
-			if (seg) {
-				const f = o.features[seg.feature];
-				inspectorRows.push({
-					name:
-						o.kind === "canal"
-							? "Canal"
-							: o.kind === "river"
-								? "Río"
-								: "Camino",
-					value: f.name || f.class,
-				});
-			}
-		}
-		region.layers
-			.filter((l) => l.type === "raster")
-			.forEach((l, i) => {
-				const data = inspectQueries[i]?.data;
-				inspectorRows.push({
-					name: l.name,
-					value: data
-						? readLayer(
-								l,
-								data,
-								region,
-								inspected.col,
-								inspected.row,
-								currentDate,
-							)
-						: inspectQueries[i]?.isError
-							? NO_READING
-							: "Cargando…",
-				});
-			});
-	}
-	const [inspectLon, inspectLat] = inspected
-		? gridToLonLat(region, inspected.col, inspected.row)
-		: [0, 0];
-
 	const shownLayer = raster ?? activeLayer;
 	const currentSource = shownLayer ? sourceAt(shownLayer, currentDate) : null;
 
 	const sceneReady = terrain.data && readyRegion === region.id;
-	const agriList = agriMap
-		? listedZones(agriMap.zones)
-		: { listed: [], omitted: false };
-	const selectedSeries =
-		selectedAgri && moistureLayer
-			? moistureSeries(
-					selectedAgri.cells,
-					asInt16(moistureQ.data),
-					moistureLayer.dates.length,
-					agriPlane,
-					moistureLayer.scale,
-					moistureLayer.nodata,
-				)
-			: [];
-	const compareColumns = [selectedAgri?.id, ...state.agriCompare]
-		.filter((id): id is number => id !== undefined)
-		.flatMap((id) => {
-			const zone = agriMap?.zones[id];
-			if (!zone || !moistureLayer) return [];
-			return [
-				{
-					id,
-					areaKm2: zone.areaKm2,
-					values: moistureSeries(
-						zone.cells,
-						asInt16(moistureQ.data),
-						moistureLayer.dates.length,
-						agriPlane,
-						moistureLayer.scale,
-						moistureLayer.nodata,
-					),
-				},
-			];
-		});
-	const compared = alignSeries(
-		compareColumns.map((column) => ({
-			dates: moistureLayer?.dates ?? [],
-			values: column.values,
-		})),
-	);
-	const waterIndex = waterLayer
-		? Math.max(nearestDateIndex(waterLayer.dates, currentDate), 0)
-		: 0;
-	const waterTouch =
-		selectedAgri && waterData.data
-			? waterBeside(
-					selectedAgri.cells,
-					categoricalPlane(waterData.data, agriPlane, waterIndex),
-					region.width,
-					region.height,
-				)
-			: { permanent: false, fresh: false };
-	const agriWater = selectedAgri
-		? waterLines(
-				wayHit,
-				waterTouch,
-				waterways.some((way) => way.kind === "river"),
-			)
-		: [];
-	const signalDate = (dates: string[]) => signalIndex(dates);
-	const textSheet =
-		state.eventsOpen ||
-		state.contextOpen ||
-		state.creditsOpen ||
-		modelsOpen;
-	const focusTool = (
-		tool: "events" | "context" | "credits" | "agriculture" | "layers" | "models",
-	) => {
-		if (tool !== "events") store.actions.setEventsOpen(false);
-		if (tool !== "context") store.actions.setContextOpen(false);
-		if (tool !== "credits") store.actions.setCreditsOpen(false);
-		if (tool !== "agriculture" && tool !== "models")
-			store.actions.setAgricultureOpen(false);
-		if (tool !== "layers") setLayersOpen(false);
-		if (tool !== "models") {
-			setModelsOpen(false);
-			setModelFocus(null);
-		}
-	};
-	const showModel = (id: CropId) => {
-		setModelFocus(id);
-		store.actions.setAgricultureOpen(true);
-		store.actions.setPlaying(false);
-		const hit = nearestModel(mapModels, id, state.probe);
-		if (hit) {
-			pendingFly.current = null;
-			flight.target = { col: hit.col, row: hit.row };
-		} else pendingFly.current = id;
-	};
-	const dockItems: DockItem[] = [
-		...(region.id === "mexicali"
-			? [
-					{
-						id: "crops",
-						label: "Cultivos",
-						icon: "crops" as const,
-						pressed: state.agricultureOpen,
-						onClick: () => {
-							const next = !state.agricultureOpen;
-							if (next) focusTool("agriculture");
-							store.actions.setAgricultureOpen(next);
-						},
-					},
-				]
-			: []),
-		{
-			id: "events",
-			label: "Eventos",
-			icon: "events",
-			pressed: state.eventsOpen,
-			onClick: () => {
-				const next = !state.eventsOpen;
-				if (next) focusTool("events");
-				store.actions.setEventsOpen(next);
-			},
-		},
-		{
-			id: "layers",
-			label: "Capas",
-			icon: "layers",
-			pressed: layersOpen,
-			onClick: () => {
-				const next = !layersOpen;
-				if (next) focusTool("layers");
-				setLayersOpen(next);
-			},
-		},
-		{
-			id: "models",
-			label: "Modelos",
-			icon: "models",
-			pressed: modelsOpen,
-			onClick: () => {
-				const next = !modelsOpen;
-				if (next) focusTool("models");
-				else setModelFocus(null);
-				setModelsOpen(next);
-			},
-		},
-		{
-			id: "context",
-			label: "Contexto",
-			icon: "context",
-			pressed: state.contextOpen,
-			onClick: () => {
-				const next = !state.contextOpen;
-				if (next) focusTool("context");
-				store.actions.setContextOpen(next);
-			},
-		},
-		{
-			id: "credits",
-			label: "Créditos",
-			icon: "credits",
-			pressed: state.creditsOpen,
-			onClick: () => {
-				const next = !state.creditsOpen;
-				if (next) focusTool("credits");
-				store.actions.setCreditsOpen(next);
-			},
-		},
-		{
-			id: "settings",
-			label: "Ajustes",
-			icon: "settings",
-			pressed: state.settingsOpen,
-			onClick: () => store.actions.setSettingsOpen(true),
-		},
-	];
-
 	return (
 		<FlightContext.Provider value={flight}>
 			<a
@@ -991,38 +542,19 @@ function ExplorerScene() {
 								bands={rasterBands ?? zoneData?.bands ?? null}
 								bandPalette={raster ? bandPalette : BAND_COLORS}
 								contour={!raster}
-								onPick={(col, row) => {
-									setSelectedPoiId(null);
-									store.actions.setInspected({ col, row });
-									if (!agriMap || !landData.data) return;
-									const zone = zoneAt(
-										agriMap,
-										landData.data,
-										region.width,
-										col,
-										row,
-									);
-									if (!zone) return;
-									setCompareRejected(false);
-									store.actions.setAgricultureOpen(true);
-									store.actions.setAgriZone(zone.id);
-								}}
+								onPick={() => {}}
 								overlays={overlayModels
 									.filter((o) => overlayOn(state, o.id))
 									.map((o) => ({
 										...o,
-										flags: paintWayFlags(
-											o.flags,
-											o.segments,
-											wayHit?.overlayId === o.id ? wayHit.feature : null,
-										),
+										flags: o.flags,
 									}))}
 								arrows={raster?.id === "east-west" ? rasterField : null}
 								zones={zones}
-								agriCells={selectedAgri?.cells ?? null}
+								agriCells={null}
 								agriMask={agriMask}
 								mapModels={mapModels}
-								modelFocus={modelFocus}
+								modelFocus={null}
 								cityMask={cityMask}
 								cityLive={selectedPoiId === "mexicali-centro"}
 								zoneLabels={zoneLabels}
@@ -1067,300 +599,18 @@ function ExplorerScene() {
 					)}
 				</div>
 
-				<SettingsDialog
-					open={state.settingsOpen}
-					onOpenChange={store.actions.setSettingsOpen}
-					layerVisible={mainUi.visible}
-					onLayerVisible={(v) => store.actions.setLayerVisible(MAIN_LAYER, v)}
-					opacity={mainUi.opacity}
-					onOpacity={(v) => store.actions.setLayerOpacity(MAIN_LAYER, v)}
-					hasDisplacement={Boolean(timelineLayer)}
-					deform3d={state.deform3d}
-					onDeform3d={store.actions.setDeform3d}
-					deformFactor={state.deformFactor}
-					onDeformFactor={store.actions.setDeformFactor}
-					overlays={overlayModels.map((o) => ({
-						id: o.id,
-						name: o.name,
-						on: overlayOn(state, o.id),
-						km: overlayBands ? o.km : null,
-					}))}
-					onOverlay={store.actions.setOverlay}
-					hasWater={Boolean(waterLayer)}
-					waterMotion={state.waterMotion}
-					onWaterMotion={store.actions.setWaterMotion}
-				/>
-
 				<WarpOverlay active={state.warping} reducedMotion={reducedMotion} />
 
-				{/* HUD */}
-				<div className="hud-safe pointer-events-none absolute inset-0 flex flex-col gap-2 sm:gap-3">
-					<TopBar
-						compact={compact}
-						region={region}
-						exaggeration={exaggeration}
-						onOpenContext={() =>
-							store.actions.setContextOpen(!state.contextOpen)
-						}
-						onOpenCredits={() =>
-							store.actions.setCreditsOpen(!state.creditsOpen)
-						}
-						onOpenSettings={() => store.actions.setSettingsOpen(true)}
-						onOpenEvents={() => store.actions.setEventsOpen(!state.eventsOpen)}
-						eventsOpen={state.eventsOpen}
-						onOpenModels={() => {
-							const next = !modelsOpen;
-							if (next) {
-								store.actions.setEventsOpen(false);
-								store.actions.setContextOpen(false);
-								store.actions.setCreditsOpen(false);
-								if (compact) focusTool("models");
-							} else setModelFocus(null);
-							setModelsOpen(next);
-						}}
-						modelsOpen={modelsOpen}
-						contextOpen={state.contextOpen}
-						creditsOpen={state.creditsOpen}
-						agricultureOpen={state.agricultureOpen}
-						onOpenAgriculture={
-							region.id === "mexicali"
-								? () => store.actions.setAgricultureOpen(!state.agricultureOpen)
-								: undefined
-						}
-						notice={<DataNotice source={currentSource} />}
-					/>
-					{compact && (
-						<PoiList
-							manifest={manifest.data}
-							activeRegionId={region.id}
-							onSelect={goTo}
-							compact
-						/>
-					)}
-
-					<div
-						className={`flex min-h-0 flex-1 gap-2 sm:gap-3 ${
-							compact
-								? "flex-col justify-end"
-								: "items-start justify-between"
-						}`}
-					>
-						{(!compact || agriOpen) && (
-						<div
-							className={`scroll-thin flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain sm:gap-3 ${
-								compact
-									? "max-h-[min(38dvh,20rem)] w-full"
-									: "max-h-full"
-							}`}
-						>
-							{!compact && (
-								<PoiList
-									manifest={manifest.data}
-									activeRegionId={region.id}
-									onSelect={goTo}
-									compact={false}
-								/>
-							)}
-							{agriOpen && (
-								<AgriculturePanel
-									missingCover={!landLayer || landData.isError}
-									loading={!landData.data && landData.isPending}
-									listed={agriList.listed}
-									omitted={agriList.omitted}
-									selected={selectedAgri}
-									rejected={compareRejected}
-									moisture={selectedSeries[moistureIndex] ?? null}
-									dates={moistureLayer?.dates ?? []}
-									activeIndex={moistureIndex}
-									selectedSeries={selectedSeries}
-									columns={compareColumns.map((column, index) => ({
-										...column,
-										values: compared.columns[index] ?? column.values,
-									}))}
-									vegetation={
-										selectedAgri && hvLayer
-											? vegetationWord(
-													selectedAgri.cells,
-													asInt16(hvQ.data),
-													signalDate(hvLayer.dates),
-													agriPlane,
-													hvLayer.scale,
-													hvLayer.nodata,
-												)
-											: null
-									}
-									change={
-										selectedAgri && changeLayer
-											? changeWord(
-													selectedAgri.cells,
-													asBytes(changeQ.data),
-													signalDate(changeLayer.dates),
-													agriPlane,
-													changeLayer.nodata,
-												)
-											: null
-									}
-									disturbance={
-										selectedAgri && disturbanceLayer
-											? disturbanceWord(
-													selectedAgri.cells,
-													asBytes(disturbanceQ.data),
-													signalDate(disturbanceLayer.dates),
-													agriPlane,
-													disturbanceLayer.nodata,
-												)
-											: null
-									}
-									water={agriWater}
-									onSelect={(id) => {
-										setCompareRejected(false);
-										setSelectedPoiId(null);
-										store.actions.setAgriZone(id);
-									}}
-									onCompare={(id) => {
-										if (state.agriZoneId === null) {
-											setCompareRejected(false);
-											store.actions.setAgriZone(id);
-											return;
-										}
-										const next = withComparison(
-											state.agriZoneId,
-											state.agriCompare,
-											id,
-										);
-										setCompareRejected(next.rejected);
-										if (!next.rejected)
-											store.actions.setAgriCompare(next.extras);
-									}}
-									onRemove={(id) => {
-										setCompareRejected(false);
-										store.actions.setAgriCompare(
-											state.agriCompare.filter((item) => item !== id),
-										);
-									}}
-									onClose={() => store.actions.setAgricultureOpen(false)}
-								/>
-							)}
-						</div>
-						)}
-						{(textSheet || !compact || layersOpen || inspected) && (
-						<div
-							className={`scroll-thin flex min-h-0 flex-col gap-2 overflow-y-auto overscroll-contain sm:gap-3 ${
-								compact
-									? "max-h-[min(38dvh,20rem)] w-full"
-									: "max-h-full items-end"
-							}`}
-						>
-							{state.eventsOpen && (
-								<SidePanel
-									title="Eventos detectados"
-									onClose={() => store.actions.setEventsOpen(false)}
-								>
-									<EventsList events={events.data ?? []} onSelect={goToEvent} />
-								</SidePanel>
-							)}
-							{modelsOpen && (
-								<SidePanel
-									title="Modelos del mapa"
-									onClose={() => {
-										setModelsOpen(false);
-										setModelFocus(null);
-									}}
-								>
-									<ModelsPanel
-										selected={modelFocus}
-										counts={modelCounts}
-										reducedMotion={reducedMotion}
-										onSelect={showModel}
-									/>
-								</SidePanel>
-							)}
-							{state.contextOpen && (
-								<SidePanel
-									title="Contexto científico"
-									onClose={() => store.actions.setContextOpen(false)}
-								>
-									<ContextContent />
-								</SidePanel>
-							)}
-							{state.creditsOpen && (
-								<SidePanel
-									title="Créditos y procedencia"
-									onClose={() => store.actions.setCreditsOpen(false)}
-								>
-									<CreditsContent
-										region={region}
-										layer={raster ?? activeLayer ?? timelineLayer}
-									/>
-								</SidePanel>
-							)}
-							{!textSheet && (inspected || !compact || layersOpen) && (
-									<>
-										{inspected && (
-											<Inspector
-												place={
-													nearestPoi(
-														region.pois,
-														inspected.col,
-														inspected.row,
-														region.cellSizeM,
-													)?.text ?? null
-												}
-												coords={`${inspectLat.toFixed(4)}°, ${inspectLon.toFixed(4)}°`}
-												rows={inspectorRows}
-												onClose={() => store.actions.setInspected(null)}
-											/>
-										)}
-										{(!compact || layersOpen) && (
-										<LayerPanel
-											catalog={catalog}
-											active={item}
-											onSelect={selectItem}
-											displacement={timelineLayer}
-											visible={mainUi.visible}
-											loading={Boolean(raster) && rasterData.isPending}
-											failed={Boolean(raster) && rasterData.isError}
-											fieldLimit={fieldLimit}
-											zoneCount={zoneData?.zones.length ?? 0}
-										/>
-										)}
-									</>
-								)}
-						</div>
-						)}
-					</div>
-
-					<div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-						<ShipStatus
-							region={region}
-							layer={activeLayer}
-							cube={activeCube}
+				<div className="hud-safe pointer-events-none absolute inset-0 flex flex-col justify-end gap-2 sm:gap-3">
+					<div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-end">
+						<ParkedModelView
+							models={mapModels}
 							probe={state.probe}
-							groundM={
-								state.probe && terrain.data
-									? sampleBilinear(
-											terrain.data,
-											region.width,
-											region.height,
-											state.probe.col,
-											state.probe.row,
-										)
-									: null
-							}
-							dateIndex={dispIndex}
-							compact={compact}
-							mode={view === "velocity" ? "velocity" : "cumulative"}
-							reading={reading}
-							loading={Boolean(activeLayer) && cube.isPending}
-							failed={Boolean(activeLayer) && cube.isError}
+							reducedMotion={reducedMotion}
 						/>
 						<div className="flex min-w-0 flex-1 flex-col items-center gap-2">
 							{dateCount > 0 && currentDate ? (
 								<div className="w-full max-w-2xl">
-									{!(
-										compact &&
-										(textSheet || state.agricultureOpen || layersOpen)
-									) && (
 									<DateTitle
 										date={fmtShortDate(currentDate)}
 										subtitle={[
@@ -1371,7 +621,6 @@ function ExplorerScene() {
 											.join(" · ")}
 										announce={!state.playing}
 									/>
-									)}
 									<Timeline
 										dates={timelineDates}
 										index={Math.min(state.dateIndex, dateCount - 1)}
@@ -1398,13 +647,8 @@ function ExplorerScene() {
 									/>
 								)
 							)}
-							{!(
-								compact &&
-								(textSheet || state.agricultureOpen || layersOpen)
-							) && <ControlsHint compact={compact} />}
 						</div>
 					</div>
-					{compact && <MobileDock items={dockItems} />}
 				</div>
 			</div>
 		</FlightContext.Provider>

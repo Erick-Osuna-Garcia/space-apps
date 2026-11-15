@@ -31,15 +31,13 @@ export interface ExplorerState {
 	overlays: Record<string, boolean>;
 	settingsOpen: boolean;
 	eventsOpen: boolean;
-	/** Hundimiento 3D exagerado (design.md D13). */
+	/** Hundimiento 3D siempre encendido, factor fijo ×2000. */
 	deform3d: boolean;
 	deformFactor: DeformFactor;
 	/** Oleaje y ondas; la extensión del agua cambia con la fecha de todos modos. */
 	waterMotion: boolean;
 	contextOpen: boolean;
 	creditsOpen: boolean;
-	/** Panel de zonas agrícolas. No cambia la capa del mapa. */
-	agricultureOpen: boolean;
 	agriZoneId: number | null;
 	/** Otras zonas en la comparación; la elegida ocupa el primer lugar. */
 	agriCompare: number[];
@@ -52,8 +50,8 @@ export type MapView =
 	| "differential"
 	| "acceleration"
 	| `layer:${string}`;
-export const DEFORM_FACTORS = [2000, 5000, 10000] as const;
-export type DeformFactor = (typeof DEFORM_FACTORS)[number];
+export const DEFORM_FACTOR = 2000;
+export type DeformFactor = typeof DEFORM_FACTOR;
 
 export const DEFAULT_LAYER: LayerUiState = { visible: true, opacity: 0.85 };
 
@@ -70,11 +68,10 @@ export const initialExplorerState = (regionId = "mexicali"): ExplorerState => ({
 	settingsOpen: false,
 	eventsOpen: false,
 	deform3d: true,
-	deformFactor: 10000,
+	deformFactor: DEFORM_FACTOR,
 	waterMotion: true,
 	contextOpen: false,
 	creditsOpen: false,
-	agricultureOpen: false,
 	agriZoneId: null,
 	agriCompare: [],
 });
@@ -94,7 +91,6 @@ export function createExplorerStore(initial = initialExplorerState()) {
 				playing: true,
 				probe: null,
 				inspected: null,
-				agricultureOpen: false,
 				agriZoneId: null,
 				agriCompare: [],
 			}));
@@ -161,12 +157,6 @@ export function createExplorerStore(initial = initialExplorerState()) {
 		setOverlay(id: string, on: boolean) {
 			setState((s) => ({ ...s, overlays: { ...s.overlays, [id]: on } }));
 		},
-		setDeform3d(deform3d: boolean) {
-			setState((s) => ({ ...s, deform3d }));
-		},
-		setDeformFactor(deformFactor: DeformFactor) {
-			setState((s) => ({ ...s, deformFactor }));
-		},
 		setWaterMotion(waterMotion: boolean) {
 			setState((s) => ({ ...s, waterMotion }));
 		},
@@ -188,9 +178,6 @@ export function createExplorerStore(initial = initialExplorerState()) {
 				eventsOpen: creditsOpen ? false : s.eventsOpen,
 				contextOpen: creditsOpen ? false : s.contextOpen,
 			}));
-		},
-		setAgricultureOpen(agricultureOpen: boolean) {
-			setState((s) => ({ ...s, agricultureOpen }));
 		},
 		setAgriZone(agriZoneId: number | null) {
 			setState((s) => ({

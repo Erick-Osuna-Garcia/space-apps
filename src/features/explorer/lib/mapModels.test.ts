@@ -1,11 +1,32 @@
 import { describe, expect, it } from "vitest";
 import type { Feature } from "./infrastructure";
-import { isCropKind, placeMapModels, urbanCityMask } from "./mapModels";
+import {
+	isCropKind,
+	nearestAnyModel,
+	parkedModel,
+	placeMapModels,
+	urbanCityMask,
+} from "./mapModels";
 
 const grid = (width: number, height: number, paint: (i: number) => number) =>
 	Uint8Array.from({ length: width * height }, (_, i) => paint(i));
 
 describe("modelos del mapa", () => {
+	it("pone plantas con cobertura de suelo, sin un flag de panel", () => {
+		const land = grid(4, 2, (i) => (i === 0 ? 5 : 3));
+		const models = placeMapModels({
+			landcover: land,
+			width: 4,
+			height: 2,
+			roads: [],
+			crops: Boolean(land),
+			settlements: false,
+			cars: false,
+			cropStride: 1,
+		});
+		expect(models.filter((m) => isCropKind(m.kind))).toHaveLength(1);
+	});
+
 	it("pone una planta en cultivo y no en otra clase", () => {
 		const land = grid(4, 2, (i) => (i === 0 ? 5 : 3));
 		const models = placeMapModels({
@@ -111,6 +132,44 @@ describe("modelos del mapa", () => {
 		expect(mask?.[1]).toBe(255);
 		expect(mask?.[4]).toBe(0);
 		expect(urbanCityMask(grid(3, 3, () => 5), 3, 3, 1, 1)).toBeNull();
+	});
+
+	it("elige la casa más cercana, no un cultivo más lejos", () => {
+		const crop = {
+			kind: "trigo" as const,
+			col: 10,
+			row: 0,
+			yaw: 0,
+			scale: 1,
+		};
+		const house = {
+			kind: "house" as const,
+			col: 1,
+			row: 0,
+			yaw: 0,
+			scale: 1,
+		};
+		const hit = nearestAnyModel([crop, house], { col: 0, row: 0 });
+		expect(hit?.kind).toBe("house");
+	});
+
+	it("no elige modelo en vuelo ni fuera del radio", () => {
+		const house = {
+			kind: "house" as const,
+			col: 1,
+			row: 0,
+			yaw: 0,
+			scale: 1,
+		};
+		expect(
+			parkedModel([house], { col: 0, row: 0, vx: 2, vz: 0 }),
+		).toBeNull();
+		expect(parkedModel([house], { col: 0, row: 0, vx: 0, vz: 0 })?.kind).toBe(
+			"house",
+		);
+		expect(
+			nearestAnyModel([house], { col: 40, row: 40 }),
+		).toBeNull();
 	});
 
 	it("ignora un canal al poner autos", () => {

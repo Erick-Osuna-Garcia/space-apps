@@ -1,9 +1,7 @@
-import { Mountain, Route, Waves, X } from "lucide-react";
+import { Route, Waves, X } from "lucide-react";
 import { Dialog } from "radix-ui";
 import { Slider } from "#/components/ui/slider";
 import { Switch } from "#/components/ui/switch";
-import { DEFORM_FACTORS, type DeformFactor } from "../store";
-import { Segmented } from "./LayerPanel";
 
 interface SettingsDialogProps {
 	open: boolean;
@@ -12,11 +10,6 @@ interface SettingsDialogProps {
 	onLayerVisible: (visible: boolean) => void;
 	opacity: number;
 	onOpacity: (opacity: number) => void;
-	hasDisplacement: boolean;
-	deform3d: boolean;
-	onDeform3d: (on: boolean) => void;
-	deformFactor: DeformFactor;
-	onDeformFactor: (factor: DeformFactor) => void;
 	overlays: Array<{ id: string; name: string; on: boolean; km: number | null }>;
 	onOverlay: (id: string, on: boolean) => void;
 	hasWater: boolean;
@@ -66,11 +59,6 @@ export function SettingsDialog({
 	onLayerVisible,
 	opacity,
 	onOpacity,
-	hasDisplacement,
-	deform3d,
-	onDeform3d,
-	deformFactor,
-	onDeformFactor,
 	overlays,
 	onOverlay,
 	hasWater,
@@ -154,32 +142,6 @@ export function SettingsDialog({
 								checked={waterMotion}
 								onChange={onWaterMotion}
 							/>
-						</>
-					)}
-
-					{hasDisplacement && (
-						<>
-							<Heading>
-								<Mountain className="size-3.5" aria-hidden /> Relieve
-							</Heading>
-							<Row
-								id="set-3d"
-								label="Hundimiento 3D"
-								detail="Exagerado miles de veces: solo ilustrativo"
-								checked={deform3d}
-								onChange={onDeform3d}
-							/>
-							{deform3d && (
-								<Segmented
-									label="Exageración"
-									value={deformFactor}
-									onChange={onDeformFactor}
-									options={DEFORM_FACTORS.map((f) => ({
-										value: f,
-										label: `×${f.toLocaleString("es-MX")}`,
-									}))}
-								/>
-							)}
 						</>
 					)}
 				</Dialog.Content>

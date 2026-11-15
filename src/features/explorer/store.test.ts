@@ -87,18 +87,15 @@ describe("explorer store", () => {
 		expect(store.state).toMatchObject({
 			mapView: "cumulative",
 			deform3d: true,
-			deformFactor: 10000,
+			deformFactor: 2000,
 			playing: true,
 		});
 		store.actions.setMapView("zones");
-		store.actions.setDeform3d(false);
-		store.actions.setDeformFactor(5000);
 		store.actions.setRegion("tijuana");
-		// los modos de análisis se conservan al cambiar de región
 		expect(store.state).toMatchObject({
 			mapView: "zones",
-			deform3d: false,
-			deformFactor: 5000,
+			deform3d: true,
+			deformFactor: 2000,
 		});
 	});
 });

@@ -103,13 +103,44 @@ export function isCropKind(kind: string): kind is CropId {
 	return CROP_VARIANTS.some((variant) => variant.id === kind);
 }
 
-export interface MapModel {
+export type MapModel = {
 	kind: MapModelKind;
 	col: number;
 	row: number;
 	/** Radianes alrededor del eje vertical. */
 	yaw: number;
 	scale: number;
+};
+
+/** Radio en celdas para el recuadro de la nave parada. */
+export const MODEL_PROBE_CELLS = 8;
+/** Misma barra que Scene usa para «en movimiento». */
+export const PARKED_SPEED = 0.5;
+
+export function nearestAnyModel(
+	models: MapModel[],
+	probe: { col: number; row: number } | null,
+	maxCells = MODEL_PROBE_CELLS,
+): MapModel | null {
+	if (!probe) return null;
+	let best: MapModel | null = null;
+	let bestD = maxCells * maxCells;
+	for (const model of models) {
+		const d = (model.col - probe.col) ** 2 + (model.row - probe.row) ** 2;
+		if (d > bestD) continue;
+		bestD = d;
+		best = model;
+	}
+	return best;
+}
+
+export function parkedModel(
+	models: MapModel[],
+	probe: { col: number; row: number; vx?: number; vz?: number } | null,
+): MapModel | null {
+	if (!probe) return null;
+	if (Math.hypot(probe.vx ?? 0, probe.vz ?? 0) >= PARKED_SPEED) return null;
+	return nearestAnyModel(models, probe);
 }
 
 export interface PlaceMapModelsInput {
