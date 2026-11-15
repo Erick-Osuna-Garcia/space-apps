@@ -17,6 +17,7 @@ interface MapModelsProps {
 }
 
 const MAX_DRAWN = 480;
+const MAP_DRAW_SCALE = 1.25;
 const dummy = new THREE.Object3D();
 
 function usePlaced(
@@ -75,7 +76,7 @@ function usePlaced(
 			}
 			dummy.position.set(model.col, heightAt(model.col, model.row), model.row);
 			dummy.rotation.set(0, model.yaw, 0);
-			dummy.scale.setScalar(model.scale * gain);
+			dummy.scale.setScalar(model.scale * gain * MAP_DRAW_SCALE);
 			dummy.updateMatrix();
 			mesh.setMatrixAt(n, dummy.matrix);
 			n += 1;
