@@ -96,6 +96,7 @@ export interface SceneProps {
 	onPick: (col: number, row: number) => void;
 	/** Clics ya dados. Cada uno dibuja un pulso y deja una cruz negra. */
 	clickMarks: readonly ClickMark[];
+	onClickMarkExpire: (id: number) => void;
 	overlays: Array<{
 		id: string;
 		kind: "road" | "canal" | "river";
@@ -231,6 +232,7 @@ export function Scene(props: SceneProps) {
 				marks={props.clickMarks}
 				heightAt={props.heightAt}
 				reducedMotion={props.reducedMotion}
+				onExpire={props.onClickMarkExpire}
 			/>
 			<MapModels
 				models={props.mapModels}

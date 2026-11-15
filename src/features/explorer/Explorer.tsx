@@ -231,6 +231,7 @@ function ExplorerScene() {
 	const [scienceOpen, setScienceOpen] = useState<ScienceMenuId | null>(null);
 	const [clickMarks, setClickMarks] = useState<ClickMark[]>([]);
 	const clickSeq = useRef(0);
+	const showPointOnPick = useRef(false);
 	const [modelFocus, setModelFocus] = useState<CropId | null>(null);
 	const [compareRejected, setCompareRejected] = useState(false);
 	const labels = useRef(new Map<string, HTMLElement>());
@@ -867,11 +868,11 @@ function ExplorerScene() {
 		}));
 	const onPick = (col: number, row: number) => {
 		setClickMarks((marks) =>
-			pushClickMark(marks, clickSeq.current++, col, row),
+			pushClickMark(marks, clickSeq.current++, col, row, performance.now()),
 		);
 		setSelectedPoiId(null);
 		store.actions.setInspected({ col, row });
-		setScienceOpen("punto");
+		if (showPointOnPick.current) setScienceOpen("punto");
 		if (!agriMap || !landData.data) return;
 		const zone = zoneAt(agriMap, landData.data, region.width, col, row);
 		if (!zone) return;
@@ -963,6 +964,11 @@ function ExplorerScene() {
 								contour={!raster}
 								onPick={onPick}
 								clickMarks={clickMarks}
+								onClickMarkExpire={(id) =>
+									setClickMarks((marks) =>
+										marks.filter((mark) => mark.id !== id),
+									)
+								}
 								overlays={sceneOverlays}
 								ejidos={ejidos.data ?? []}
 								ejidoLabels={ejidoLabels}
@@ -1041,6 +1047,10 @@ function ExplorerScene() {
 							items={scienceItems}
 							openId={scienceOpen}
 							onOpen={setScienceOpen}
+							onDismissPoint={() => {
+								showPointOnPick.current = false;
+								setScienceOpen(null);
+							}}
 							headingExtra={{
 								punto: inspected
 									? `${inspectLat.toFixed(4)}°, ${inspectLon.toFixed(4)}°`

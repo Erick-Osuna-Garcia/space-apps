@@ -23,6 +23,8 @@ type ScienceMenuBarProps = {
 	onOpen: (id: ScienceMenuId | null) => void;
 	panels: Partial<Record<ScienceMenuId, React.ReactNode>>;
 	headingExtra?: Partial<Record<ScienceMenuId, string>>;
+	/** Cierra Punto y evita que un clic en el mapa lo vuelva a abrir. */
+	onDismissPoint?: () => void;
 };
 
 const triggerClass = (expanded: boolean) =>
@@ -38,6 +40,7 @@ export const ScienceMenuBar = ({
 	onOpen,
 	panels,
 	headingExtra,
+	onDismissPoint,
 }: ScienceMenuBarProps) => {
 	const triggers = useRef<Partial<Record<ScienceMenuId, HTMLButtonElement>>>(
 		{},
@@ -101,17 +104,31 @@ export const ScienceMenuBar = ({
 								</span>
 							) : null}
 						</h2>
-						<button
-							type="button"
-							aria-label="Cerrar menú"
-							onClick={() => {
-								onOpen(null);
-								triggers.current[openItem.id]?.focus();
-							}}
-							className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-cyan-300 motion-safe:transition-[transform,color,background-color] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.2,0,0,1)] motion-safe:active:scale-[0.96] sm:size-10"
-						>
-							<X className="size-4 stroke-[2]" aria-hidden />
-						</button>
+						<div className="flex shrink-0 items-center gap-1">
+							{openItem.id === "punto" && onDismissPoint && (
+								<button
+									type="button"
+									onClick={() => {
+										onDismissPoint();
+										triggers.current.punto?.focus();
+									}}
+									className="inline-flex h-11 shrink-0 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-sm font-semibold whitespace-nowrap text-slate-200 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-cyan-300 motion-safe:transition-[transform,color,background-color] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.2,0,0,1)] motion-safe:active:scale-[0.96]"
+								>
+									No volver a mostrar
+								</button>
+							)}
+							<button
+								type="button"
+								aria-label="Cerrar menú"
+								onClick={() => {
+									onOpen(null);
+									triggers.current[openItem.id]?.focus();
+								}}
+								className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-cyan-300 motion-safe:transition-[transform,color,background-color] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.2,0,0,1)] motion-safe:active:scale-[0.96] sm:size-10"
+							>
+								<X className="size-4 stroke-[2]" aria-hidden />
+							</button>
+						</div>
 					</div>
 					<div className="mt-3 max-h-[min(52dvh,28rem)] overflow-y-auto overscroll-contain px-2 pb-6 text-base leading-[1.5] text-slate-200 [text-wrap:pretty]">
 						<div className="rounded-lg">{panels[openItem.id]}</div>

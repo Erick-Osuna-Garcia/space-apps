@@ -1,7 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import type * as THREE from "three";
-import { type ClickMark, pulseFrame } from "./clickMarks";
+import { type ClickMark, MARK_HOLD_S, pulseFrame } from "./clickMarks";
 
 const BLACK = "#000000";
 /** Separación sobre el relieve para que la cruz no pelee con el terreno. */
@@ -11,19 +11,25 @@ function Mark({
 	mark,
 	heightAt,
 	reducedMotion,
+	onExpire,
 }: {
 	mark: ClickMark;
 	heightAt: (col: number, row: number) => number;
 	reducedMotion: boolean;
+	onExpire: (id: number) => void;
 }) {
 	const ring = useRef<THREE.Mesh>(null);
-	const born = useRef(0);
+	const expired = useRef(false);
 
 	useFrame(() => {
+		const age = (performance.now() - mark.born) / 1000;
+		if (!expired.current && age >= MARK_HOLD_S) {
+			expired.current = true;
+			onExpire(mark.id);
+		}
 		const mesh = ring.current;
 		if (!mesh) return;
-		if (born.current === 0) born.current = performance.now();
-		const frame = pulseFrame((performance.now() - born.current) / 1000);
+		const frame = pulseFrame(age);
 		mesh.visible = frame !== null;
 		if (!frame) return;
 		mesh.scale.setScalar(frame.scale);
@@ -74,10 +80,12 @@ export function ClickPulse({
 	marks,
 	heightAt,
 	reducedMotion,
+	onExpire,
 }: {
 	marks: readonly ClickMark[];
 	heightAt: (col: number, row: number) => number;
 	reducedMotion: boolean;
+	onExpire: (id: number) => void;
 }) {
 	return (
 		<>
@@ -87,6 +95,7 @@ export function ClickPulse({
 					mark={mark}
 					heightAt={heightAt}
 					reducedMotion={reducedMotion}
+					onExpire={onExpire}
 				/>
 			))}
 		</>

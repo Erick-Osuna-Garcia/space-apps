@@ -3,9 +3,13 @@ export interface ClickMark {
 	id: number;
 	col: number;
 	row: number;
+	/** Marca de tiempo del clic, en ms. */
+	born: number;
 }
 
 export const PULSE_DURATION_S = 0.4;
+/** La cruz se quita al cumplir este tiempo. */
+export const MARK_HOLD_S = 3;
 export const PULSE_SCALE_FROM = 0.35;
 export const PULSE_SCALE_TO = 8;
 
@@ -27,6 +31,15 @@ export function pushClickMark(
 	id: number,
 	col: number,
 	row: number,
+	born: number,
 ): ClickMark[] {
-	return [{ id, col, row }];
+	return [{ id, col, row, born }];
+}
+
+/** Quita la cruz cuando ya pasaron `MARK_HOLD_S`. No muta la lista anterior. */
+export function expireClickMarks(
+	marks: readonly ClickMark[],
+	nowMs: number,
+): ClickMark[] {
+	return marks.filter((mark) => nowMs - mark.born < MARK_HOLD_S * 1000);
 }
